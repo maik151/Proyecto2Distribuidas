@@ -1,11 +1,14 @@
 import axios from 'axios';
 
+const baseURL = import.meta.env.VITE_API_URL || 'https://localhost:7182/api';
+
 const apiAuth = axios.create({
-  baseURL: 'https://localhost:7182/api', 
+  baseURL: baseURL, 
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
 
 // --- INTERCEPTOR DE PETICIONES (REQUEST) ---
 apiAuth.interceptors.request.use(
