@@ -123,23 +123,32 @@ namespace DistributedApp.Auth.Api.Controllers
         [HttpPost("google-login")]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
         {
-            // 1. Validación Básica: ¿Me enviaron algo?
-            if (request == null || string.IsNullOrEmpty(request.Credential))
+            try
             {
-                return BadRequest(new { Message = "El token de Google es obligatorio." });
+                if (request == null || string.IsNullOrEmpty(request.Credential))
+                {
+                    return BadRequest(new { Message = "El token de Google es obligatorio." });
+                }
+
+                var respuesta = await _usuarioService.AuthenticateGoogleAsync(request.Credential);
+
+                if (respuesta == null)
+                {
+                    return Unauthorized(new { Message = "Autenticación fallida." });
+                }
+
+                return Ok(respuesta);
             }
-
-            // 2. Llamada al Servicio (Aquí ocurre la validación criptográfica y lógica de negocio)
-            var respuesta = await _usuarioService.AuthenticateGoogleAsync(request.Credential);
-
-            // 3. Respuesta
-            if (respuesta == null)
+            catch (System.Exception ex) // <--- ESTO ES LO NUEVO
             {
-                // Si es null, significa que el token era falso, expiró, o el usuario está inactivo.
-                return Unauthorized(new { Message = "Autenticación fallida. Token inválido o usuario bloqueado." });
+                // Esto devolverá el error exacto al frontend para que lo leas
+                return StatusCode(500, new
+                {
+                    Error = "Ocurrió un error en el servidor",
+                    Detalle = ex.Message,
+                    Inner = ex.InnerException?.Message
+                });
             }
-
-            return Ok(respuesta);
         }
     }    
 }
