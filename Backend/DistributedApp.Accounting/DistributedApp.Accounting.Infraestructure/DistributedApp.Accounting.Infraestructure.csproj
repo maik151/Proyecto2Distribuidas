@@ -13,12 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\" />
-    <Folder Include="Repositories\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\DistributedApp.Accounting.Application\DistributedApp.Accounting.Application.csproj" />
+    <ProjectReference Include="..\DistributedApp.Accounting.Domain\DistributedApp.Accounting.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="DTOs\" />
+    <ProjectReference Include="..\DistributedApp.Accounting.Domain\DistributedApp.Accounting.Domain.csproj" />
   </ItemGroup>
 
 </Project>

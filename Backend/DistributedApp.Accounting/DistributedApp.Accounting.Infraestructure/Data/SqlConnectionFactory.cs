@@ -3,7 +3,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using DistributedApp.Accounting.Application.Interfaces;
 
-namespace DistributedApp.Accounting.Infraestructure.Data
+namespace DistributedApp.Accounting.Infrastructure.Data
 {
     public class SqlConnectionFactory : ISqlConnectionFactory
     {
