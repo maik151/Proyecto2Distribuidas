@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DistributedApp.Maintenance.Application\DistributedApp.Maintenance.Application.csproj" />
+    <ProjectReference Include="..\DistributedApp.Maintenance.Domain\DistributedApp.Maintenance.Domain.csproj" />
     <ProjectReference Include="..\DistributedApp.Maintenance.Infrastructure\DistributedApp.Maintenance.Infrastructure.csproj" />
   </ItemGroup>
 

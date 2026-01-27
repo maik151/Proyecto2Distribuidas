@@ -1,48 +1,45 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_URL || 'https://localhost:7182/api';
-
+// ---------------------------------------------------------------------------
+// 1. INSTANCIA DE AUTENTICACIÓN (CORREGIDA)
+// ---------------------------------------------------------------------------
 const apiAuth = axios.create({
-  baseURL: baseURL, 
+  // CORRECCIÓN AQUÍ: Usamos VITE_API_URL que es como se llama en tu archivo .env
+  baseURL: import.meta.env.VITE_API_URL, 
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Interceptor Auth (Igual que antes)
+apiAuth.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+}, (error) => Promise.reject(error));
+
+
+// ---------------------------------------------------------------------------
+// 2. INSTANCIA PARA MANTENIMIENTO (LOCAL .NET)
+// ---------------------------------------------------------------------------
+const apiMaintenance = axios.create({
+  baseURL: 'https://localhost:7200/api', 
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-
-// --- INTERCEPTOR DE PETICIONES (REQUEST) ---
-apiAuth.interceptors.request.use(
+// Interceptor Mantenimiento
+apiMaintenance.interceptors.request.use(
   (config) => {
-    // Leemos el token directo del almacenamiento
     const token = localStorage.getItem('token');
-    
     if (token) {
-      // Si existe, lo agregamos al header Authorization
-      // Formato estándar: "Bearer eyJhbGci..."
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// --- (OPCIONAL) INTERCEPTOR DE RESPUESTAS (RESPONSE) ---
-apiAuth.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // El token ya no vale o no existe
-      console.warn("Sesión expirada o no autorizada");
-      
-      // Opcional: Limpiar storage y redirigir al login
-      // localStorage.removeItem('token');
-      // window.location.href = '/login'; 
-    }
-    return Promise.reject(error);
-  }
-);
-
-export { apiAuth };
+// ---------------------------------------------------------------------------
+// EXPORTAR AMBAS
+// ---------------------------------------------------------------------------
+export { apiAuth, apiMaintenance };
