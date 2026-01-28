@@ -1,10 +1,11 @@
 ﻿using DistributedApp.Maintenance.Application.Interface;
 using DistributedApp.Maintenance.Domain.Entities;
-using DistributedApp.Maintenance.Infrastructure.Repositories;
+using DistributedApp.Maintenance.Infrastructure.Repositories; // Tu Repo
+
 
 using System;
 using System.Collections.Generic;
-using System.Linq; // <--- Necesario para .Sum()
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DistributedApp.Maintenance.Application.Services
@@ -24,98 +25,92 @@ namespace DistributedApp.Maintenance.Application.Services
         {
             try
             {
-                // 1. Validaciones de Negocio previas
-                if (details == null || details.Count == 0)
-                    throw new ArgumentException("No se puede crear un mantenimiento sin detalles.");
+                // 1. Validaciones
+                if (details == null || !details.Any())
+                    throw new ArgumentException("No se puede crear una orden sin detalles.");
 
                 if (string.IsNullOrEmpty(header.RESPONSABLE))
                     throw new ArgumentException("El responsable es obligatorio.");
 
-                // 2. Intentar guardar en Base de Datos (Transacción SQL)
-                int newId = await _repository.CreateTransactionAsync(header, details);
+                // 2. Preparar el objeto para el Repositorio
+                // El repositorio espera que la lista esté DENTRO del header
+                header.Detalles = details;
 
-                // 3. Integración (RabbitMQ) - ESCENARIO 1: AVISO A CONTABILIDAD
+                // 3. Guardar en Base de Datos (Llamamos al método nuevo 'CreateAsync')
+                int newId = await _repository.CreateAsync(header);
+                header.ID_CABECERA = newId; // Asignamos el ID generado para usarlo en el mensaje
+
+                // 4. Integración (RabbitMQ)
                 try
                 {
                     if (newId > 0)
                     {
-                        // Calculamos el total sumando los valores de los detalles
-                        // (Asumo que tu entidad MaintenanceDetail tiene una propiedad 'VALOR' o 'Valor')
                         decimal total = details.Sum(d => d.VALOR);
 
-                        // Construimos el Payload exacto del requerimiento
                         var payloadContabilidad = new
                         {
-                            id_transaccion = header.NUMERO, // Asumiendo que header tiene el NUMERO generado
+                            id_transaccion = header.NUMERO, // O newId, depende de qué prefieras rastrear
                             fecha = DateTime.Now.ToString("yyyy-MM-dd"),
-                            glosa = $"Mantenimiento correctivo Orden {header.NUMERO} por {header.RESPONSABLE}",
+                            glosa = $"Orden Mantenimiento {header.NUMERO} - {header.RESPONSABLE}",
                             monto_total = total,
-                            tipo_gasto = "SERVICIOS_TECNICOS"
+                            tipo_gasto = "SERVICIOS_TECNICOS",
+                            origen = "MODULO_MANTENIMIENTO"
                         };
 
-                        // Enviamos mensaje ASÍNCRONO a la cola de Contabilidad en la Nube
-                        await _rabbitProducer.SendMessageAsync(payloadContabilidad, "contabilidad_queue");
+                        // Enviamos mensaje (Sin await porque el producer es void síncrono)
+                        _rabbitProducer.SendMessageAsync(payloadContabilidad, "contabilidad_queue");
 
-                        Console.WriteLine($"[RabbitMQ] Mensaje enviado a contabilidad_queue: Orden {header.NUMERO}");
+                        Console.WriteLine($"[RabbitMQ] Enviado a Contabilidad: {header.NUMERO}");
                     }
                 }
                 catch (Exception mqEx)
                 {
-                    // Solo logueamos el error de integración, pero retornamos el ID porque la orden SÍ se creó en SQL.
+                    // Si falla la cola, NO fallamos la transacción, solo logueamos
                     Console.WriteLine("ADVERTENCIA: Falló RabbitMQ pero se guardó en BD: " + mqEx.Message);
                 }
 
                 return newId;
             }
-            catch (ArgumentException argEx)
-            {
-                // Errores de validación (Bad Request)
-                throw argEx;
-            }
             catch (Exception ex)
             {
-                // Errores graves de base de datos (Internal Server Error)
-                throw new Exception("Error crítico al procesar la orden de mantenimiento: " + ex.Message);
+                throw new Exception("Error al crear la orden: " + ex.Message);
             }
         }
 
         public async Task<IEnumerable<MaintenanceHeader>> GetHistoryAsync()
         {
-            try
-            {
-                return await _repository.GetAllHeadersAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al obtener el historial: " + ex.Message);
-            }
+            // CORRECCIÓN: Usamos 'GetAllAsync'
+            return await _repository.GetAllAsync();
         }
 
         public async Task<MaintenanceHeader> GetOrderDetailsAsync(int idHeader)
         {
-            try
-            {
-                var order = await _repository.GetByIdWithDetailsAsync(idHeader);
-                if (order == null) throw new KeyNotFoundException($"La orden {idHeader} no existe.");
-                return order;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al obtener detalles de la orden: " + ex.Message);
-            }
+            // CORRECCIÓN: Usamos 'GetByIdAsync'
+            var order = await _repository.GetByIdAsync(idHeader);
+            if (order == null) throw new KeyNotFoundException($"Orden {idHeader} no encontrada.");
+            return order;
         }
 
         public async Task<IEnumerable<MaintenanceDetail>> GenerateCostReportAsync(DateTime start, DateTime end)
         {
-            try
-            {
-                if (start > end) throw new ArgumentException("La fecha de inicio no puede ser mayor a la fin.");
-                return await _repository.GetReportDataAsync(start, end);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al generar el reporte: " + ex.Message);
-            }
+            if (start > end) throw new ArgumentException("La fecha inicio no puede ser mayor a fin.");
+            // CORRECCIÓN: Usamos 'GetReportDataAsync'
+            return await _repository.GetReportDataAsync(start, end);
+        }
+
+        // --- MÉTODOS QUE FALTABAN PARA COMPLETAR EL CRUD ---
+
+        public async Task<bool> UpdateOrderAsync(MaintenanceHeader header, List<MaintenanceDetail> details)
+        {
+            // Vinculamos la lista al objeto padre
+            header.Detalles = details;
+            // Llamamos al repo
+            return await _repository.UpdateAsync(header);
+        }
+
+        public async Task<bool> DeleteOrderAsync(int idHeader)
+        {
+            return await _repository.DeleteAsync(idHeader);
         }
     }
 }

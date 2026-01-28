@@ -16,5 +16,6 @@ namespace DistributedApp.Maintenance.Domain.Entities
 
         // Propiedad de navegación (Solo para lectura, no se mapea directo en Insert)
         public List<MaintenanceDetail> Detalles { get; set; } = new List<MaintenanceDetail>();
+
     }
 }

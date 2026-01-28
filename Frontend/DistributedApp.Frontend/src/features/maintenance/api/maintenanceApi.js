@@ -71,11 +71,7 @@ export const deleteAsset = async (id) => {
 // 3. MANTENIMIENTO (CRUD COMPLETO)
 // ============================================================
 
-// LISTAR (Para la tabla de búsqueda)
-export const getMaintenanceHistory = async () => {
-  const response = await apiMaintenance.get('/Maintenance');
-  return response.data;
-};
+
 
 // CREAR
 export const createMaintenanceOrder = async (header, details) => {
@@ -129,5 +125,18 @@ export const getMaintenanceReport = async (start, end) => {
   const response = await apiMaintenance.get('/Maintenance/report', { 
     params: { start, end } 
   });
+  return response.data;
+};
+
+// LISTAR (Historial)
+export const getMaintenanceHistory = async () => {
+  const response = await apiMaintenance.get('/Maintenance');
+  return response.data;
+};
+
+// --- AGREGAR ESTA FUNCIÓN ---
+// OBTENER POR ID (Trae la orden completa con detalles)
+export const getMaintenanceById = async (id) => {
+  const response = await apiMaintenance.get(`/Maintenance/${id}`);
   return response.data;
 };

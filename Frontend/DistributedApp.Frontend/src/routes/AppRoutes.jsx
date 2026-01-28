@@ -2,21 +2,25 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "../features/auth/context/AuthContext.jsx";
 import ProtectedRoute from "./ProtectedRoutes.jsx";
 
-// Pages Generales
+// Pages Generales (Auth, Dashboard, Usuarios)
 import LoginPage from "../features/auth/pages/LoginPage.jsx";
 import DashboardPage from "../features/dashboard/pages/dashboardpages.jsx";
 import UsuariosPage from "../features/usuarios/pages/UsuarioPage.jsx";
+
+// Pages MANTENIMIENTO (Original)
 import MaintenancePage from "../features/maintenance/pages/MaintenancePage.jsx";
 
-// Pages CONTABILIDAD
+// Pages CONTABILIDAD (Original)
 import ContabilidadDashboard from "../features/accounting/pages/ContabilidadDashboard.jsx";
 import TipoCuentaPage from "../features/accounting/pages/TipoCuentaPage.jsx";
 import CuentaPage from "../features/accounting/pages/CuentaPage.jsx";
 import ComprobantePage from "../features/accounting/pages/ComprobantePage.jsx";
 import ReportesPage from "../features/accounting/pages/ReportesPage.jsx";
 
-// Placeholders
-const ActivosPage = () => <div className="p-8">Activos (En construcción)</div>;
+// Pages ACTIVOS (Nuevo)
+import ActivosPage from "../features/assets/pages/ActivosPage.jsx";
+import ActivosReportPage from "../features/assets/pages/ActivosReportPage.jsx";
+import TipoActivosPage from "../features/assets/pages/TipoActivosPage.jsx";
 
 const AppRoutes = () => {
   return (
@@ -29,8 +33,14 @@ const AppRoutes = () => {
         {/* --- Rutas Protegidas (Cualquier usuario logueado) --- */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          
+          {/* Módulo Mantenimiento */}
           <Route path="/mantenimiento" element={<MaintenancePage />} />
+          
+          {/* Módulo Activos (Nuevas Rutas) */}
           <Route path="/activos" element={<ActivosPage />} />
+          <Route path="/activos/reporte" element={<ActivosReportPage />} />
+          <Route path="/activos/tipos" element={<TipoActivosPage />} />
         </Route>
 
         {/* --- Rutas Solo Admin --- */}
@@ -39,7 +49,6 @@ const AppRoutes = () => {
         </Route>
 
         {/* --- Módulo de Contabilidad (Admin y Contador) --- */}
-        {/* He unificado tus dos bloques en uno solo para que sea más limpio */}
         <Route element={<ProtectedRoute allowedRoles={["admin", "contador"]} />}>
           <Route path="/contabilidad" element={<ContabilidadDashboard />} />
           <Route path="/contabilidad/tipos-cuenta" element={<TipoCuentaPage />} />
