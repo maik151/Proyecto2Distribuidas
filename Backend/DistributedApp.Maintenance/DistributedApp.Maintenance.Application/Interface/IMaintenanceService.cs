@@ -7,6 +7,7 @@ namespace DistributedApp.Maintenance.Application.Interface
 {
     public interface IMaintenanceService
     {
+
         Task<int> CreateMaintenanceOrderAsync(MaintenanceHeader header, List<MaintenanceDetail> details);
         Task<IEnumerable<MaintenanceHeader>> GetHistoryAsync();
         Task<MaintenanceHeader> GetOrderDetailsAsync(int idHeader);

@@ -1,8 +1,10 @@
 ﻿using DistributedApp.Maintenance.Application.Interface;
 using DistributedApp.Maintenance.Domain.Entities;
 using DistributedApp.Maintenance.Infrastructure.Repositories;
+
 using System;
 using System.Collections.Generic;
+using System.Linq; // <--- Necesario para .Sum()
 using System.Threading.Tasks;
 
 namespace DistributedApp.Maintenance.Application.Services
@@ -10,10 +12,12 @@ namespace DistributedApp.Maintenance.Application.Services
     public class MaintenanceService : IMaintenanceService
     {
         private readonly IMaintenanceRepository _repository;
+        private readonly IRabbitMQProducer _rabbitProducer;
 
-        public MaintenanceService(IMaintenanceRepository repository)
+        public MaintenanceService(IMaintenanceRepository repository, IRabbitMQProducer rabbitProducer)
         {
             _repository = repository;
+            _rabbitProducer = rabbitProducer;
         }
 
         public async Task<int> CreateMaintenanceOrderAsync(MaintenanceHeader header, List<MaintenanceDetail> details)
@@ -30,20 +34,34 @@ namespace DistributedApp.Maintenance.Application.Services
                 // 2. Intentar guardar en Base de Datos (Transacción SQL)
                 int newId = await _repository.CreateTransactionAsync(header, details);
 
-                // 3. Integración (RabbitMQ)
-                // Usamos un try-catch interno para que, si falla la cola, NO falle el guardado en BD.
+                // 3. Integración (RabbitMQ) - ESCENARIO 1: AVISO A CONTABILIDAD
                 try
                 {
                     if (newId > 0)
                     {
-                        // TODO: _rabbitMQPublisher.Publish(newId);
-                        // Console.WriteLine("Mensaje enviado a la cola...");
+                        // Calculamos el total sumando los valores de los detalles
+                        // (Asumo que tu entidad MaintenanceDetail tiene una propiedad 'VALOR' o 'Valor')
+                        decimal total = details.Sum(d => d.VALOR);
+
+                        // Construimos el Payload exacto del requerimiento
+                        var payloadContabilidad = new
+                        {
+                            id_transaccion = header.NUMERO, // Asumiendo que header tiene el NUMERO generado
+                            fecha = DateTime.Now.ToString("yyyy-MM-dd"),
+                            glosa = $"Mantenimiento correctivo Orden {header.NUMERO} por {header.RESPONSABLE}",
+                            monto_total = total,
+                            tipo_gasto = "SERVICIOS_TECNICOS"
+                        };
+
+                        // Enviamos mensaje ASÍNCRONO a la cola de Contabilidad en la Nube
+                        await _rabbitProducer.SendMessageAsync(payloadContabilidad, "contabilidad_queue");
+
+                        Console.WriteLine($"[RabbitMQ] Mensaje enviado a contabilidad_queue: Orden {header.NUMERO}");
                     }
                 }
                 catch (Exception mqEx)
                 {
-                    // Solo logueamos el error de integración, pero retornamos el ID porque la orden SÍ se creó.
-                    // Logger.LogError("Error al enviar a RabbitMQ: " + mqEx.Message);
+                    // Solo logueamos el error de integración, pero retornamos el ID porque la orden SÍ se creó en SQL.
                     Console.WriteLine("ADVERTENCIA: Falló RabbitMQ pero se guardó en BD: " + mqEx.Message);
                 }
 
