@@ -5,7 +5,7 @@ import {
   updateUser,
   deleteUser,
   toggleActive,
-} from "../api/usersApi";
+} from "../api/usersApi"; // Asegúrate de que esta ruta sea correcta
 import { Link } from "react-router-dom";
 import {
   UserPlus,
@@ -44,9 +44,8 @@ const BackToHomeButton = ({ to = "/dashboard", className = "" }) => (
   </Link>
 );
 
-// --- MODAL (UserForm - Adaptado a camelCase) ---
+// --- MODAL (UserForm - CORREGIDO PARA QUE EL BOTÓN SE VEA SÍ O SÍ) ---
 const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
-  // Estado inicial en camelCase para coincidir con el backend
   const [form, setForm] = useState({
     nombreUsuario: "", 
     contrasena: "", 
@@ -55,42 +54,49 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
     rol: "user", 
     activo: true
   });
+  
   const [showPwd, setShowPwd] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
+    setErrorMsg("");
     if (initialValues) {
       setForm({
-        // Usamos ?. para evitar errores si viene null
         nombreUsuario: initialValues.nombreUsuario || "",
-        contrasena: "", // La contraseña no se rellena al editar
+        contrasena: "", 
         nombreCompleto: initialValues.nombreCompleto || "",
         correo: initialValues.correo || "",
         rol: initialValues.rol?.toLowerCase?.() || "user",
         activo: !!initialValues.activo,
       });
     } else {
-      // Limpiar formulario al crear
       setForm({ nombreUsuario: "", contrasena: "", nombreCompleto: "", correo: "", rol: "user", activo: true });
     }
   }, [initialValues, open]);
 
   if (!open) return null;
-  const isEdit = !!initialValues?.idUsuario;
+  const isEdit = !!(initialValues && initialValues.idUsuario);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+    if (errorMsg) setErrorMsg("");
   };
 
   const submit = (e) => {
     e.preventDefault();
-    if (!form.nombreUsuario?.trim()) return;
+    if (!form.nombreUsuario?.trim()) {
+      setErrorMsg("El nombre de usuario es obligatorio");
+      return;
+    }
     onSubmit(form);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 transition-all">
       <div className="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl ring-1 ring-black/5 overflow-hidden transform transition-all scale-100">
+        
+        {/* Encabezado */}
         <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h3 className="text-xl font-bold text-slate-900">{isEdit ? "Editar Perfil" : "Nuevo Miembro"}</h3>
@@ -100,7 +106,15 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
              {isEdit ? <Pencil size={20} /> : <UserPlus size={20} />}
           </div>
         </div>
+
+        {/* Formulario */}
         <form onSubmit={submit} className="p-8 grid gap-5">
+          {errorMsg && (
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-semibold border border-red-100">
+                {errorMsg}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-500 uppercase">Usuario</label>
@@ -115,14 +129,17 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
               </select>
             </div>
           </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-500 uppercase">Nombre Completo</label>
             <input name="nombreCompleto" value={form.nombreCompleto} onChange={handleChange} className="input-field" required />
           </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-500 uppercase">Correo</label>
             <input name="correo" type="email" value={form.correo} onChange={handleChange} className="input-field" required />
           </div>
+
           {!isEdit && (
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-500 uppercase">Contraseña</label>
@@ -134,14 +151,30 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
               </div>
             </div>
           )}
+
           <div className="flex items-center gap-3 pt-2">
             <input id="activo" name="activo" type="checkbox" checked={form.activo} onChange={handleChange} className="h-5 w-5 accent-purple-600 cursor-pointer" />
             <label htmlFor="activo" className="text-sm font-medium text-slate-700 cursor-pointer">Usuario Activo</label>
           </div>
+
           <div className="flex gap-3 pt-4 border-t border-slate-50">
              <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition">Cancelar</button>
-             <button type="submit" disabled={loading} className="flex-1 py-3 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition shadow-lg shadow-purple-200 disabled:opacity-70">
-               {loading ? <RefreshCw className="animate-spin mx-auto" /> : isEdit ? "Guardar" : "Crear"}
+             
+             {/* BOTÓN BLINDADO: Usamos styles inline para forzar el color si Tailwind falla */}
+             <button 
+               type="submit" 
+               disabled={loading} 
+               style={{ backgroundColor: '#7C3AED', color: '#ffffff' }}
+               className="flex-1 py-3 rounded-xl font-bold transition shadow-lg shadow-purple-200 disabled:opacity-70 flex justify-center items-center gap-2 hover:opacity-90"
+             >
+               {loading ? (
+                 <>
+                   <RefreshCw className="animate-spin" size={20} />
+                   <span>Procesando...</span>
+                 </>
+               ) : (
+                 isEdit ? "Guardar Cambios" : "Crear Usuario"
+               )}
              </button>
           </div>
         </form>
@@ -175,7 +208,7 @@ const UsuariosPage = () => {
     setError("");
     try {
       const data = await getUsers();
-      // Aseguramos que sea un array. Tu backend devuelve el array directo según el JSON.
+      // Aseguramos que sea un array
       const lista = Array.isArray(data) ? data : (data.data || []);
       setAllItems(lista);
     } catch (e) {
@@ -188,16 +221,12 @@ const UsuariosPage = () => {
 
   useEffect(() => { fetchList(); }, []);
 
-  // FILTRADO (Actualizado a camelCase)
+  // FILTRADO
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
-      // Filtro Usuario: item.nombreUsuario
       if (usernameQ && !item.nombreUsuario?.toLowerCase().includes(usernameQ.toLowerCase())) return false;
-      // Filtro Correo: item.correo
       if (emailQ && !item.correo?.toLowerCase().includes(emailQ.toLowerCase())) return false;
-      // Filtro Rol: item.rol
       if (roleQ !== "all" && item.rol?.toLowerCase() !== roleQ) return false;
-      // Filtro Estado: item.activo
       if (statusQ !== "all") {
         const isActive = statusQ === "active";
         if (item.activo !== isActive) return false;
@@ -211,7 +240,6 @@ const UsuariosPage = () => {
   const onEdit = (row) => { setEditing(row); setOpenForm(true); };
   
   const onDelete = async (row) => {
-    // Usamos row.nombreUsuario
     if (!confirm(`¿Eliminar a ${row.nombreUsuario}?`)) return;
     setDeletingId(row.idUsuario);
     try { await deleteUser(row.idUsuario); await fetchList(); } 
@@ -219,7 +247,6 @@ const UsuariosPage = () => {
   };
   
   const onToggleActive = async (row) => {
-    // Usamos row.activo
     try { await toggleActive(row.idUsuario, !row.activo); await fetchList(); } 
     catch (e) { alert("Error al cambiar estado."); }
   };
@@ -227,39 +254,27 @@ const UsuariosPage = () => {
   const handleSubmitForm = async (form) => {
     setSaving(true);
     try {
-      // 1. Preparamos el objeto EXACTAMENTE como lo pide el Swagger
       const payload = {
-        // En creación (POST), el ID suele enviarse como 0
         idUsuario: editing?.idUsuario || 0,
-        
         nombreUsuario: form.nombreUsuario,
         nombreCompleto: form.nombreCompleto,
         correo: form.correo,
-        rol: form.rol || "user", // Aseguramos que no vaya nulo
+        rol: form.rol || "user",
         activo: typeof form.activo === 'boolean' ? form.activo : true,
-        
-        // El Swagger muestra fechaCreacion. La enviamos actual o nula según prefieras.
-        // Al enviarla como ISOString cumplimos con el formato "2026-01-21T..."
         fechaCreacion: editing?.fechaCreacion || new Date().toISOString(),
       };
 
-      // 2. Lógica condicional (Crear vs Editar)
       if (editing?.idUsuario) {
-        // En EDICIÓN:
-        // Si el usuario no escribió contraseña nueva, no la enviamos (o enviamos null)
-        // para que el backend sepa que no debe cambiarla.
+        // EDICIÓN
         if (form.contrasena) {
            payload.contrasena = form.contrasena;
         } else {
-           // Ojo: Si tu backend requiere el campo obligatorio, tendrás que enviar la actual
-           // o manejarlo en el backend. Por ahora la omitimos del JSON si es vacía.
+           // Enviar la contraseña existente si es requerido por el backend
            payload.contrasena = editing.contrasena; 
         }
-
         await updateUser(editing.idUsuario, payload);
       } else {
-        // En CREACIÓN:
-        // La contraseña es obligatoria.
+        // CREACIÓN
         payload.contrasena = form.contrasena;
         await createUser(payload);
       }
@@ -270,14 +285,13 @@ const UsuariosPage = () => {
       
     } catch (e) {
       console.error(e);
-      // Muestra un error más descriptivo si el backend lo devuelve
       const msg = e.response?.data?.Error || "Error al guardar. Revisa los datos.";
       alert(msg);
     } finally {
       setSaving(false);
     }
   };
-  // Stats (Actualizado a camelCase)
+
   const summary = useMemo(() => {
     const activos = allItems.filter((i) => !!i.activo).length;
     return { activos, inactivos: allItems.length - activos };
@@ -317,13 +331,18 @@ const UsuariosPage = () => {
              </div>
           </div>
 
-          <div className={`${cardBase} md:col-span-3 bg-purple-600 text-white border-transparent hover:bg-purple-700 flex flex-col items-center justify-center text-center cursor-pointer group`} onClick={onCreate}>
-              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><UserPlus size={28} /></div>
+          <div 
+            className="md:col-span-3 rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group flex flex-col items-center justify-center text-center bg-purple-600 text-white hover:bg-purple-700" 
+            style={{ backgroundColor: '#7C3AED', color: '#fff' }} 
+            onClick={onCreate}>
+              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <UserPlus size={28} />
+              </div>
               <h3 className="text-lg font-bold">Nuevo Usuario</h3>
           </div>
         </div>
 
-        {/* FILTROS (Inputs corregidos con padding-left) */}
+        {/* FILTROS */}
         <div className={`${cardBase} py-4 px-6 flex flex-col lg:flex-row items-center gap-4`}>
            <div className="flex items-center gap-2 text-slate-400 lg:pr-4 lg:border-r border-slate-100 w-full lg:w-auto">
               <Filter size={18} /> <span className="text-sm font-medium">Filtros</span>
@@ -357,7 +376,7 @@ const UsuariosPage = () => {
            </button>
         </div>
 
-        {/* TABLA DE RESULTADOS (Mapeo corregido) */}
+        {/* TABLA DE RESULTADOS */}
         <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
           {error && <div className="p-4 bg-rose-50 text-rose-600 text-sm font-medium text-center">{error}</div>}
           <div className="overflow-x-auto">
@@ -382,47 +401,45 @@ const UsuariosPage = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-xs ring-2 ring-white shadow-sm">
-                            {/* Usamos nombreCompleto o nombreUsuario */}
                             {getInitials(row.nombreCompleto || row.nombreUsuario)}
                           </div>
                           <div>
-                            {/* camelCase aquí */}
                             <p className="font-semibold text-slate-900">{row.nombreUsuario}</p>
                             <p className="text-xs text-slate-400 font-mono">ID: {row.idUsuario}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                            row.rol?.toLowerCase() === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
-                            row.rol?.toLowerCase() === 'contador' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                            'bg-slate-50 text-slate-600 border-slate-200'
-                         }`}>
-                            {row.rol === 'admin' && <ShieldCheck size={10} className="mr-1" />}
-                            {row.rol || 'user'}
-                         </span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                             row.rol?.toLowerCase() === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
+                             row.rol?.toLowerCase() === 'contador' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                             'bg-slate-50 text-slate-600 border-slate-200'
+                          }`}>
+                             {row.rol === 'admin' && <ShieldCheck size={10} className="mr-1" />}
+                             {row.rol || 'user'}
+                          </span>
                       </td>
                       <td className="px-6 py-4">
-                         <button onClick={() => onToggleActive(row)} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
-                            row.activo 
-                            ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" 
-                            : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
-                         }`}>
-                            <span className={`w-2 h-2 rounded-full ${row.activo ? 'bg-green-500' : 'bg-rose-500'}`}></span>
-                            {row.activo ? "Activo" : "Inactivo"}
-                         </button>
+                          <button onClick={() => onToggleActive(row)} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                             row.activo 
+                             ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" 
+                             : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                          }`}>
+                             <span className={`w-2 h-2 rounded-full ${row.activo ? 'bg-green-500' : 'bg-rose-500'}`}></span>
+                             {row.activo ? "Activo" : "Inactivo"}
+                          </button>
                       </td>
                       <td className="px-6 py-4">
-                         <div className="flex flex-col">
-                            <span className="text-slate-900 font-medium">{row.nombreCompleto}</span>
-                            <span className="text-slate-500 text-xs">{row.correo}</span>
-                         </div>
+                          <div className="flex flex-col">
+                             <span className="text-slate-900 font-medium">{row.nombreCompleto}</span>
+                             <span className="text-slate-500 text-xs">{row.correo}</span>
+                          </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => onEdit(row)} className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-purple-600 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200 transition-all" title="Editar"><Pencil size={16} /></button>
-                            <button onClick={() => onDelete(row)} disabled={deletingId === row.idUsuario} className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-rose-600 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200 transition-all" title="Eliminar"><Trash2 size={16} /></button>
-                         </div>
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button onClick={() => onEdit(row)} className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-purple-600 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200 transition-all" title="Editar"><Pencil size={16} /></button>
+                             <button onClick={() => onDelete(row)} disabled={deletingId === row.idUsuario} className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-rose-600 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200 transition-all" title="Eliminar"><Trash2 size={16} /></button>
+                          </div>
                       </td>
                     </tr>
                   ))
@@ -431,15 +448,14 @@ const UsuariosPage = () => {
             </table>
           </div>
           <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end">
-             <span className="text-xs text-slate-500 font-medium">
-                Total Registros: {filteredItems.length} (de {allItems.length})
-             </span>
+              <span className="text-xs text-slate-500 font-medium">
+                 Total Registros: {filteredItems.length} (de {allItems.length})
+              </span>
           </div>
         </div>
       </div>
       <UserForm open={openForm} onClose={() => { setOpenForm(false); setEditing(null); }} onSubmit={handleSubmitForm} initialValues={editing} loading={saving} />
       
-      {/* Estilos corregidos: Padding aumentado en .filter-input para que el icono no se monte */}
       <style>{`
         .input-field { 
           width: 100%; 
@@ -452,23 +468,23 @@ const UsuariosPage = () => {
         } 
         .input-field:focus { 
           background-color: white; 
-          border-color: #9333EA; 
+          border-color: #7C3AED; 
           outline: none; 
-          box-shadow: 0 0 0 4px rgba(147, 51, 234, 0.1); 
+          box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1); 
         } 
         .filter-input { 
           width: 100%; 
           border-radius: 0.75rem; 
           background-color: #F8F9FC; 
           border: 1px solid #E2E8F0; 
-          padding: 0.6rem 1rem 0.6rem 2.5rem; /* Padding izquierdo de 2.5rem para el icono */
+          padding: 0.6rem 1rem 0.6rem 2.5rem; 
           font-size: 0.875rem; 
           color: #334155; 
           transition: all 0.2s; 
         } 
         .filter-input:focus { 
           background-color: white; 
-          border-color: #9333EA; 
+          border-color: #7C3AED; 
           outline: none; 
         }
       `}</style>
