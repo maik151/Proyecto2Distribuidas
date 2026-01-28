@@ -68,11 +68,20 @@ export const deleteAsset = async (id) => {
 
 
 // ============================================================
-// 3. MANTENIMIENTO Y REPORTES
+// 3. MANTENIMIENTO (CRUD COMPLETO)
 // ============================================================
 
+// LISTAR (Para la tabla de búsqueda)
+export const getMaintenanceHistory = async () => {
+  const response = await apiMaintenance.get('/Maintenance');
+  return response.data;
+};
+
+// CREAR
 export const createMaintenanceOrder = async (header, details) => {
   const payload = {
+    // Para crear, mandamos IDs en 0
+    iD_CABECERA: 0,
     numero: header.numero,
     fecha: new Date(header.fecha).toISOString(), 
     responsable: header.responsable,
@@ -82,16 +91,41 @@ export const createMaintenanceOrder = async (header, details) => {
       iD_ACTIVO: parseInt(d.id_activo),
       iD_ACTIVIDAD: parseInt(d.id_actividad),
       valor: parseFloat(d.valor),
-      nombreActivo: "",
-      nombreActividad: ""
+      nombreActivo: "", 
+      nombreActividad: "" 
     }))
   };
   return await apiMaintenance.post('/Maintenance', payload);
 };
 
+// MODIFICAR (Requisito Crítico)
+export const updateMaintenanceOrder = async (id, header, details) => {
+  const payload = {
+    iD_CABECERA: id, // ID de la orden que editamos
+    numero: header.numero,
+    fecha: new Date(header.fecha).toISOString(),
+    responsable: header.responsable,
+    detalles: details.map(d => ({
+      // Si tiene ID_DETALLE lo mantenemos, si es nuevo va en 0
+      iD_DETALLE: d.iD_DETALLE || 0,
+      iD_CABECERA: id,
+      iD_ACTIVO: parseInt(d.id_activo),
+      iD_ACTIVIDAD: parseInt(d.id_actividad),
+      valor: parseFloat(d.valor),
+      nombreActivo: "",
+      nombreActividad: ""
+    }))
+  };
+  return await apiMaintenance.put(`/Maintenance/${id}`, payload);
+};
+
+// ELIMINAR
+export const deleteMaintenanceOrder = async (id) => {
+  return await apiMaintenance.delete(`/Maintenance/${id}`);
+};
+
+// REPORTE
 export const getMaintenanceReport = async (start, end) => {
-  // El input date devuelve YYYY-MM-DD, que es válido para C#
-  // Ejemplo URL: /api/Maintenance/report?start=2026-01-26&end=2026-01-27
   const response = await apiMaintenance.get('/Maintenance/report', { 
     params: { start, end } 
   });
