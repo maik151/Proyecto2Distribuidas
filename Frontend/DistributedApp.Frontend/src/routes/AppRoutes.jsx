@@ -6,11 +6,12 @@ import ProtectedRoute from "./ProtectedRoutes.jsx";
 import LoginPage from "../features/auth/pages/LoginPage.jsx";
 import DashboardPage from "../features/dashboard/pages/dashboardpages.jsx";
 import UsuariosPage from "../features/usuarios/pages/UsuarioPage.jsx";
+import MaintenancePage from "../features/maintenance/pages/MaintenancePage.jsx"
 
 
 // Placeholders
 //const UsuariosPage = () => <div className="p-8">Usuarios</div>;
-const MantenimientoPage = () => <div className="p-8">Mantenimiento</div>;
+
 const ActivosPage = () => <div className="p-8">Activos</div>;
 const ContabilidadPage = () => <div className="p-8">Contabilidad</div>;
 
@@ -23,7 +24,7 @@ const AppRoutes = () => (
       {/* Rutas protegidas para cualquier usuario logueado */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/mantenimiento" element={<MantenimientoPage />} />
+        <Route path="/mantenimiento" element={<MaintenancePage />} />
         <Route path="/activos" element={<ActivosPage />} />
       </Route>
 
@@ -45,5 +46,4 @@ const AppRoutes = () => (
 
 
 export default AppRoutes;
-
 
