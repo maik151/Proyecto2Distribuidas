@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+	  
     <ProjectReference Include="..\DistributedApp.Assets.Application\DistributedApp.Assets.Application.csproj" />
     <ProjectReference Include="..\DistributedApp.Assets.Domain\DistributedApp.Assets.Domain.csproj" />
   </ItemGroup>

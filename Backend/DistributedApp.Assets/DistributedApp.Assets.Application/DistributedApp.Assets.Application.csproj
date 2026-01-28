@@ -16,4 +16,9 @@
     <Folder Include="DTOs\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DistributedApp.Assets.Domain\DistributedApp.Assets.Domain.csproj" />
+  </ItemGroup>
+
+
 </Project>

@@ -6,7 +6,7 @@ using DistributedApp.Auth.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURACIÓN CORS (La regla se llama "AllowFrontend")
+// 1. CONFIGURACIï¿½N CORS (La regla se llama "AllowFrontend")
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy => // <--- NOMBRE CLAVE
@@ -21,7 +21,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Inyección de dependencias (Esto estaba bien)
+// Inyecciï¿½n de dependencias (Esto estaba bien)
 builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
@@ -36,7 +36,7 @@ if (app.Environment.IsDevelopment())
 }
 
 
-app.UseCors("AllowFrontend"); // <--- AQUÍ ESTABA EL ERROR (Decía "AllowAll")
+app.UseCors("AllowFrontend"); // <--- AQUï¿½ ESTABA EL ERROR (Decï¿½a "AllowAll")
 
 app.UseAuthorization();
 
