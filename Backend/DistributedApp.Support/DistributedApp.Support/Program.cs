@@ -2,30 +2,33 @@ using DistributedApp.Support.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Agregar SignalR
 builder.Services.AddSignalR();
 
-// 2. CORS (Permisivo para evitar dolores de cabeza iniciales en Render)
-// OJO: En un futuro, cambia .AllowAnyOrigin() por la URL real de tu Front en Vercel/Netlify
+// --- CORRECCIÓN DE CORS ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true) // Permite cualquier origen
-              .AllowAnyHeader()
+        policy.WithOrigins(
+                "http://localhost:5173", // Tu frontend local
+                "https://tu-frontend-en-render.onrender.com" // <--- AGREGA AQUÍ LA URL DE TU FRONT SI YA LO SUBISTE
+              )
               .AllowAnyMethod()
-              .AllowCredentials(); // Necesario para SignalR
+              .AllowAnyHeader()
+              .AllowCredentials() // <--- OBLIGATORIO PARA SIGNALR
+              .SetIsOriginAllowed(origin => true); // Permitir cualquier origen (solo para desarrollo/pruebas)
     });
 });
+// ---------------------------
 
 var app = builder.Build();
 
-// 3. Importante: Escuchar en el puerto que Render asigne
+// AJUSTE DE PUERTO PARA RENDER (Esto ya lo tenías, déjalo igual)
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 app.Urls.Add($"http://0.0.0.0:{port}");
 
-app.UseCors("AllowAll");
-
+// --- IMPORTANTE: EL ORDEN ---
+app.UseCors("AllowAll"); // <--- Debe ir ANTES de MapHub
 app.MapHub<SupportHub>("/chatHub");
 
 app.Run();

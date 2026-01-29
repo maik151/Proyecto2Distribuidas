@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { HubConnectionBuilder, LogLevel, HubConnectionState } from "@microsoft/signalr";
 import { useAuth } from "../features/auth/context/AuthContext";
 
@@ -8,59 +8,60 @@ export const ChatProvider = ({ children }) => {
   const { user } = useAuth();
   const [connection, setConnection] = useState(null);
   const [messages, setMessages] = useState([]);
-  
-  // AHORA LAS NOTIFICACIONES SON UN ARRAY DE OBJETOS
   const [unreadMessages, setUnreadMessages] = useState([]); 
-  
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Limpiar notificaciones (cuando abres el chat o el panel)
+  // 1. DEFINIR LA URL DEL CHAT
+  // Si existe la variable en el .env la usa, si no, usa localhost por defecto
+  const CHAT_URL = import.meta.env.VITE_SUPPORT_MODULE_URL || "https://localhost:7500/chatHub";
+
   const clearNotifications = () => setUnreadMessages([]);
 
   const toggleChat = () => {
-    // Si abrimos el chat, borramos las notificaciones
     if (!isChatOpen) clearNotifications();
     setIsChatOpen((prev) => !prev);
   };
 
-  // 1. Crear Conexión
+  // 2. CONEXIÓN (Usando la variable de entorno)
   useEffect(() => {
+    console.log("🔌 Conectando al chat en:", CHAT_URL); // Log para verificar
+
     const newConnection = new HubConnectionBuilder()
-      .withUrl("https://localhost:7500/chatHub")
+      .withUrl(CHAT_URL)
       .withAutomaticReconnect()
-      .configureLogging(LogLevel.None) // Menos ruido en consola
+      .configureLogging(LogLevel.Warning) // Warning para ensuciar menos la consola
       .build();
 
     setConnection(newConnection);
   }, []);
 
-  // 2. Manejar Eventos
+  // 3. EVENTOS Y LÓGICA (Igual que antes)
   useEffect(() => {
     if (connection) {
       if (connection.state === HubConnectionState.Disconnected) {
         connection.start()
           .then(() => {
-            console.log("✅ Socket Conectado");
+            console.log("✅ Socket Conectado Exitosamente");
 
-            connection.off("ReceiveMessage"); // Limpiar listeners previos
-            
-            // Escuchar el mensaje (Case Sensitive Fix)
-            connection.on("ReceiveMessage", (sender, role, message, timestamp) => {
-              console.log("📩 Mensaje entrante:", message);
+            connection.off("ReceiveMessage");
+            connection.off("receivemessage"); 
 
+            const handleMessage = (sender, role, message, timestamp) => {
+              console.log("📩 Mensaje:", message);
               const newMessage = { sender, role, message, timestamp };
-
-              // 1. Agregar al historial del chat
+              
               setMessages((prev) => [...prev, newMessage]);
 
-              // 2. Si el chat está cerrado Y no soy yo, agregar al panel de notificaciones
               const isMe = sender === user?.username;
               if (!isMe && !isChatOpen) {
-                setUnreadMessages((prev) => [newMessage, ...prev]); // Los más nuevos primero
+                setUnreadMessages((prev) => [newMessage, ...prev]);
               }
-            });
+            };
+
+            connection.on("ReceiveMessage", handleMessage);   
+            connection.on("receivemessage", handleMessage);   
           })
-          .catch((e) => console.error("Fallo conexión:", e));
+          .catch((e) => console.error("❌ Fallo conexión SignalR:", e));
       }
     }
   }, [connection, user, isChatOpen]);
@@ -78,7 +79,7 @@ export const ChatProvider = ({ children }) => {
       value={{
         messages,
         sendMessage,
-        unreadMessages, // Exportamos la lista, no el número
+        unreadMessages,
         isChatOpen,
         toggleChat,
         clearNotifications,
