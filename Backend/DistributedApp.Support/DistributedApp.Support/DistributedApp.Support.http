@@ -1,0 +1,6 @@
+@DistributedApp.Support_HostAddress = http://localhost:5195
+
+GET {{DistributedApp.Support_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

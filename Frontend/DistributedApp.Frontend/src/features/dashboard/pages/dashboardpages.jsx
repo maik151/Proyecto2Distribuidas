@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useChat } from "../../../context/ChatContext"; 
 import {
   Command,
   Users,
@@ -13,6 +14,7 @@ import {
   Calendar,
   Sparkles,
   ArrowUpRight,
+  MessageSquare // <--- Nuevo icono para el botón de responder
 } from "lucide-react";
 
 // --- UTILIDADES ---
@@ -104,6 +106,59 @@ const BentoCard = ({ title, desc, icon: Icon, onClick, disabled }) => {
   );
 };
 
+// --- NUEVO COMPONENTE: PANEL DE NOTIFICACIONES ---
+const NotificationPanel = ({ unreadMessages, onClose, onOpenChat }) => {
+    return (
+        <div className="absolute top-14 right-0 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 animate-in fade-in slide-in-from-top-2 overflow-hidden ring-1 ring-slate-900/5">
+            <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                <h4 className="font-bold text-slate-800 text-sm">Notificaciones</h4>
+                <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-bold">
+                    {unreadMessages.length} nuevas
+                </span>
+            </div>
+            
+            <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                {unreadMessages.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
+                        <Bell size={24} className="opacity-20"/>
+                        No tienes mensajes nuevos
+                    </div>
+                ) : (
+                    unreadMessages.map((msg, i) => (
+                        <div key={i} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-3 items-start cursor-default">
+                             <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 text-xs font-bold border border-violet-200">
+                                {msg.sender ? msg.sender.substring(0,2).toUpperCase() : "??"}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                                 <p className="text-xs text-slate-800 font-semibold truncate">
+                                     {msg.sender} <span className="font-normal text-slate-500">te ha enviado un mensaje:</span>
+                                 </p>
+                                 <p className="text-xs text-slate-600 mt-1 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    "{msg.message}"
+                                 </p>
+                                 <p className="text-[10px] text-slate-400 mt-1 text-right">
+                                    {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                 </p>
+                             </div>
+                        </div>
+                    ))
+                )}
+            </div>
+            
+            {unreadMessages.length > 0 && (
+                <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
+                    <button 
+                        onClick={() => { onOpenChat(); onClose(); }}
+                        className="text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 flex items-center justify-center gap-2 w-full py-2 rounded-xl transition-colors shadow-sm"
+                    >
+                        <MessageSquare size={14}/> Responder en el Chat
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // --- PÁGINA PRINCIPAL ---
 
 const DashboardPage = () => {
@@ -111,6 +166,12 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState("inicio");
   const [currentDate, setCurrentDate] = useState("");
+  
+  // TRAEMOS DATOS DEL CHAT
+  const { unreadMessages, toggleChat } = useChat();
+  
+  // Estado local para abrir/cerrar el panel de notificaciones
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     const options = { weekday: "long", day: "numeric", month: "long" };
@@ -194,10 +255,33 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button className="p-3 rounded-2xl bg-white text-slate-400 hover:text-violet-600 hover:bg-violet-50 hover:shadow-md transition-all">
-              <Bell size={20} />
-            </button>
+          <div className="flex items-center gap-3 relative">
+            {/* BOTÓN CAMPANA (CONECTADO AL PANEL DE NOTIFICACIONES) */}
+            <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className={`p-3 rounded-2xl transition-all relative ${
+                    showNotifications 
+                        ? 'bg-violet-100 text-violet-700 shadow-inner' 
+                        : 'bg-white text-slate-400 hover:text-violet-600 hover:bg-violet-50 hover:shadow-md'
+                  }`}
+                >
+                  <Bell size={20} />
+                  {unreadMessages.length > 0 && (
+                    <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-bounce"></span>
+                  )}
+                </button>
+
+                {/* RENDERIZADO CONDICIONAL DEL PANEL */}
+                {showNotifications && (
+                    <NotificationPanel 
+                        unreadMessages={unreadMessages} 
+                        onClose={() => setShowNotifications(false)}
+                        onOpenChat={toggleChat} 
+                    />
+                )}
+            </div>
+            
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-slate-600 font-semibold hover:bg-red-50 hover:text-red-600 hover:shadow-md transition-all border border-transparent hover:border-red-100"

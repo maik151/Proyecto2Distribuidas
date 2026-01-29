@@ -84,6 +84,10 @@ namespace DistributedApp.Auth.Api.Controllers
                     return NotFound(new { Message = "Usuario no encontrado o IDs no coinciden" });
                 }
 
+                if (!string.IsNullOrEmpty(usuario.Contrasena)) 
+                {
+                    usuario.Contrasena = usuario.Contrasena; 
+                }
                 return Ok(new { Message = "Usuario actualizado correctamente" });
             }
             catch (System.Exception ex)

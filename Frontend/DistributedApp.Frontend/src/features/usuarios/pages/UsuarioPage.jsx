@@ -5,7 +5,7 @@ import {
   updateUser,
   deleteUser,
   toggleActive,
-} from "../api/usersApi"; // Asegúrate de que esta ruta sea correcta
+} from "../api/usersApi"; 
 import { Link } from "react-router-dom";
 import {
   UserPlus,
@@ -44,7 +44,7 @@ const BackToHomeButton = ({ to = "/dashboard", className = "" }) => (
   </Link>
 );
 
-// --- MODAL (UserForm - CORREGIDO PARA QUE EL BOTÓN SE VEA SÍ O SÍ) ---
+// --- MODAL (UserForm) ---
 const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
   const [form, setForm] = useState({
     nombreUsuario: "", 
@@ -63,7 +63,7 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
     if (initialValues) {
       setForm({
         nombreUsuario: initialValues.nombreUsuario || "",
-        contrasena: "", 
+        contrasena: "", // Siempre inicia vacía al editar para no mostrar el hash
         nombreCompleto: initialValues.nombreCompleto || "",
         correo: initialValues.correo || "",
         rol: initialValues.rol?.toLowerCase?.() || "user",
@@ -88,6 +88,11 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
     if (!form.nombreUsuario?.trim()) {
       setErrorMsg("El nombre de usuario es obligatorio");
       return;
+    }
+    // Validación manual de contraseña al crear
+    if (!isEdit && !form.contrasena) {
+        setErrorMsg("La contraseña es obligatoria para nuevos usuarios");
+        return;
     }
     onSubmit(form);
   };
@@ -140,17 +145,28 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
             <input name="correo" type="email" value={form.correo} onChange={handleChange} className="input-field" required />
           </div>
 
-          {!isEdit && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Contraseña</label>
-              <div className="relative">
-                <input name="contrasena" type={showPwd ? "text" : "password"} value={form.contrasena} onChange={handleChange} className="input-field pr-10" minLength={6} required />
-                <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600">
-                  {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+          {/* CAMPO DE CONTRASEÑA (Ahora visible en Edición) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-500 uppercase">
+                Contraseña {isEdit && <span className="text-slate-400 font-normal lowercase">(opcional)</span>}
+            </label>
+            <div className="relative">
+              <input 
+                name="contrasena" 
+                type={showPwd ? "text" : "password"} 
+                value={form.contrasena} 
+                onChange={handleChange} 
+                className="input-field pr-10" 
+                // Si es edición, no es required y minLength es flexible. Si es nuevo, required y min 6.
+                minLength={isEdit ? 0 : 6} 
+                required={!isEdit}
+                placeholder={isEdit ? "Dejar vacía para mantener actual" : "Mínimo 6 caracteres"}
+              />
+              <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600">
+                {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-          )}
+          </div>
 
           <div className="flex items-center gap-3 pt-2">
             <input id="activo" name="activo" type="checkbox" checked={form.activo} onChange={handleChange} className="h-5 w-5 accent-purple-600 cursor-pointer" />
@@ -160,7 +176,6 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
           <div className="flex gap-3 pt-4 border-t border-slate-50">
              <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition">Cancelar</button>
              
-             {/* BOTÓN BLINDADO: Usamos styles inline para forzar el color si Tailwind falla */}
              <button 
                type="submit" 
                disabled={loading} 
@@ -208,7 +223,6 @@ const UsuariosPage = () => {
     setError("");
     try {
       const data = await getUsers();
-      // Aseguramos que sea un array
       const lista = Array.isArray(data) ? data : (data.data || []);
       setAllItems(lista);
     } catch (e) {
@@ -267,10 +281,12 @@ const UsuariosPage = () => {
       if (editing?.idUsuario) {
         // EDICIÓN
         if (form.contrasena) {
-           payload.contrasena = form.contrasena;
+            // Si el usuario escribió algo, mandamos la nueva contraseña
+            payload.contrasena = form.contrasena;
         } else {
-           // Enviar la contraseña existente si es requerido por el backend
-           payload.contrasena = editing.contrasena; 
+            // Si no, mandamos la contraseña antigua para que el backend no la borre
+            // (Asumiendo que 'editing.contrasena' tiene el valor actual o hash)
+            payload.contrasena = editing.contrasena; 
         }
         await updateUser(editing.idUsuario, payload);
       } else {
@@ -396,60 +412,60 @@ const UsuariosPage = () => {
                 ) : filteredItems.length === 0 ? (
                    <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-400">No se encontraron usuarios.</td></tr>
                 ) : (
-                  filteredItems.map((row) => (
-                    <tr key={row.idUsuario} className="group hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-xs ring-2 ring-white shadow-sm">
-                            {getInitials(row.nombreCompleto || row.nombreUsuario)}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900">{row.nombreUsuario}</p>
-                            <p className="text-xs text-slate-400 font-mono">ID: {row.idUsuario}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                   filteredItems.map((row) => (
+                     <tr key={row.idUsuario} className="group hover:bg-slate-50/80 transition-colors">
+                       <td className="px-6 py-4">
+                         <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-xs ring-2 ring-white shadow-sm">
+                             {getInitials(row.nombreCompleto || row.nombreUsuario)}
+                           </div>
+                           <div>
+                             <p className="font-semibold text-slate-900">{row.nombreUsuario}</p>
+                             <p className="text-xs text-slate-400 font-mono">ID: {row.idUsuario}</p>
+                           </div>
+                         </div>
+                       </td>
+                       <td className="px-6 py-4">
+                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
                              row.rol?.toLowerCase() === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
                              row.rol?.toLowerCase() === 'contador' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                              'bg-slate-50 text-slate-600 border-slate-200'
-                          }`}>
+                           }`}>
                              {row.rol === 'admin' && <ShieldCheck size={10} className="mr-1" />}
                              {row.rol || 'user'}
-                          </span>
-                      </td>
-                      <td className="px-6 py-4">
-                          <button onClick={() => onToggleActive(row)} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                           </span>
+                       </td>
+                       <td className="px-6 py-4">
+                           <button onClick={() => onToggleActive(row)} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
                              row.activo 
                              ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" 
                              : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
-                          }`}>
+                           }`}>
                              <span className={`w-2 h-2 rounded-full ${row.activo ? 'bg-green-500' : 'bg-rose-500'}`}></span>
                              {row.activo ? "Activo" : "Inactivo"}
-                          </button>
-                      </td>
-                      <td className="px-6 py-4">
-                          <div className="flex flex-col">
+                           </button>
+                       </td>
+                       <td className="px-6 py-4">
+                           <div className="flex flex-col">
                              <span className="text-slate-900 font-medium">{row.nombreCompleto}</span>
                              <span className="text-slate-500 text-xs">{row.correo}</span>
-                          </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                           </div>
+                       </td>
+                       <td className="px-6 py-4 text-right">
+                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                              <button onClick={() => onEdit(row)} className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-purple-600 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200 transition-all" title="Editar"><Pencil size={16} /></button>
                              <button onClick={() => onDelete(row)} disabled={deletingId === row.idUsuario} className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-rose-600 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200 transition-all" title="Eliminar"><Trash2 size={16} /></button>
-                          </div>
-                      </td>
-                    </tr>
-                  ))
+                           </div>
+                       </td>
+                     </tr>
+                   ))
                 )}
               </tbody>
             </table>
           </div>
           <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end">
               <span className="text-xs text-slate-500 font-medium">
-                 Total Registros: {filteredItems.length} (de {allItems.length})
+                  Total Registros: {filteredItems.length} (de {allItems.length})
               </span>
           </div>
         </div>
