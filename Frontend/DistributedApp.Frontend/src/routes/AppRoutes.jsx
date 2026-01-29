@@ -17,24 +17,24 @@ import CuentaPage from "../features/accounting/pages/CuentaPage.jsx";
 import ComprobantePage from "../features/accounting/pages/ComprobantePage.jsx";
 import ReportesPage from "../features/accounting/pages/ReportesPage.jsx";
 
-// Pages ACTIVOS
+// Pages ACTIVOS (Actualizado con nuevas páginas)
 import ActivosPage from "../features/assets/pages/ActivosPage.jsx";
 import ActivosReportPage from "../features/assets/pages/ActivosReportPage.jsx";
 import TipoActivosPage from "../features/assets/pages/TipoActivosPage.jsx";
+import ReporteActivosPorTipoPage from "../features/assets/pages/ReporteActivosPorTipoPage.jsx";
+import DepreciacionPage from "../features/assets/pages/DepreciacionPage.jsx";
 
 // Chat
 import SupportChat from "../features/smartComponents/SupportChat.jsx";
 import { ChatProvider } from "../context/ChatContext.jsx";
 
 const AppRoutes = () => {
-  // ELIMINADO: const { user } = useAuth(); <- Esto causaba el error
-  
   return (
     <AuthProvider>
-      {/* ChatProvider es hijo de AuthProvider, así que SÍ puede usar useAuth internamente */}
+      {/* ChatProvider es hijo de AuthProvider para tener acceso al usuario */}
       <ChatProvider>
         
-        {/* El chat flotante global */}
+        {/* El chat flotante global visible en toda la app */}
         <SupportChat />
 
         <Routes>
@@ -49,10 +49,12 @@ const AppRoutes = () => {
             {/* Módulo Mantenimiento */}
             <Route path="/mantenimiento" element={<MaintenancePage />} />
             
-            {/* Módulo Activos */}
+            {/* Módulo Activos (Rutas Completas) */}
             <Route path="/activos" element={<ActivosPage />} />
             <Route path="/activos/reporte" element={<ActivosReportPage />} />
             <Route path="/activos/tipos" element={<TipoActivosPage />} />
+            <Route path="/activos/reporte-tipos" element={<ReporteActivosPorTipoPage />} />
+            <Route path="/activos/depreciacion" element={<DepreciacionPage />} />
           </Route>
 
           {/* --- Rutas Solo Admin --- */}
