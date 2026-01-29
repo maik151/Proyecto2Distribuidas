@@ -109,7 +109,7 @@ namespace DistributedApp.Assets.Api.Controllers
         ValorCompra = req.ValorCompra,
         IdTipoActivo = req.IdTipoActivo,
         ActivoFlag = true,
-        FechaCreacion = DateTime.UtcNow // ✅ AQUI
+        FechaCreacion = DateTime.Now // ✅ AQUI
         // o DateTime.UtcNow
     };
 

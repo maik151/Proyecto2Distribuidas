@@ -106,11 +106,12 @@ public class ActivoRepository : IActivoRepository
     public async Task<int> CreateAsync(Activo activo)
     {
         using var connection = _connectionFactory.CreateConnection();
+        // CAMBIO: En VALUES, cambiamos GETDATE() por @FechaCreacion
         const string sql = @"
             INSERT INTO Activos.Activos 
                 (Nombre, PeriodosDepreciacionTotal, ValorCompra, IdTipoActivo, Activo, FechaCreacion)
             VALUES 
-                (@Nombre, @PeriodosDepreciacionTotal, @ValorCompra, @IdTipoActivo, 1, GETDATE());
+                (@Nombre, @PeriodosDepreciacionTotal, @ValorCompra, @IdTipoActivo, 1, @FechaCreacion); 
             SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
         return await connection.ExecuteScalarAsync<int>(sql, activo);
