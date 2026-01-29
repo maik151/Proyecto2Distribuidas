@@ -14,6 +14,7 @@ builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
 // ✅ Repositorios (CLAVE)
 builder.Services.AddScoped<ITipoActivoRepository, TipoActivoRepository>();
 builder.Services.AddScoped<IActivoRepository, ActivoRepository>();
+builder.Services.AddScoped<IDepreciacionRepository, DepreciacionRepository>();
 
 // ✅ CORS para Vite
 builder.Services.AddCors(options =>
