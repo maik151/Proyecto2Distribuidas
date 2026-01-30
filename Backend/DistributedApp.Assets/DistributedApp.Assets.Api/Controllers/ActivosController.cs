@@ -10,10 +10,13 @@ namespace DistributedApp.Assets.Api.Controllers
     public class ActivosController : ControllerBase
     {
         private readonly IActivoRepository _repo;
+        private readonly IMessageProducer _messageProducer; // <--- 1. Dependencia de RabbitMQ
 
-        public ActivosController(IActivoRepository repo)
+        // Inyección de dependencias en el constructor
+        public ActivosController(IActivoRepository repo, IMessageProducer messageProducer)
         {
             _repo = repo;
+            _messageProducer = messageProducer;
         }
 
         [HttpGet]
@@ -69,7 +72,6 @@ namespace DistributedApp.Assets.Api.Controllers
         }
 
         // Reporte por rango de fechas (para imprimir)
-        // GET: /api/Activos/report?from=2026-01-01&to=2026-01-31
         [HttpGet("report")]
         public async Task<IActionResult> Report([FromQuery] string from, [FromQuery] string to)
         {
@@ -93,29 +95,125 @@ namespace DistributedApp.Assets.Api.Controllers
                 a.TipoActivoNombre,
                 a.ValorCompra,
                 a.PeriodosDepreciacionTotal,
-                a.FechaCreacion // Cambiado de a.FechaRegistro a a.FechaCreacion
+                a.FechaCreacion
             ));
 
             return Ok(result);
         }
+        // ==========================================
+        // ENDPOINT DE DIAGNÓSTICO (BORRAR DESPUÉS)
+        // GET: /api/Activos/test-rabbit
+        // ==========================================
+        [HttpGet("test-rabbit")]
+        public IActionResult TestRabbitConnection()
+        {
+            var log = new List<string>();
+            log.Add("Iniciando prueba de conexión...");
+
+            try
+            {
+                // 1. HARDCODEA TU URL AQUÍ (Solo para probar que no sea error de lectura del appsettings)
+                // Copia y pega TAL CUAL la url de tu dashboard de CloudAMQP (la que empieza con amqps://)
+                string urlDirecta = "amqps://jxflsaoh:ZvYqv3-5b6QfJQVfY8GHFQUflwYAiN1M@gorilla.lmq.cloudamqp.com/jxflsaoh"; 
+                
+                log.Add($"Intentando conectar a: {urlDirecta.Substring(0, 20)}...");
+
+                var factory = new RabbitMQ.Client.ConnectionFactory
+                {
+                    Uri = new Uri(urlDirecta)
+                };
+
+                // AJUSTE CRÍTICO PARA CLOUDAMQP (SSL)
+                // A veces la librería 6.x necesita esto explícito
+                if (urlDirecta.StartsWith("amqps"))
+                {
+                    factory.Ssl.Enabled = true;
+                    factory.Ssl.ServerName = System.Net.Dns.GetHostName();
+                    factory.Ssl.AcceptablePolicyErrors = System.Net.Security.SslPolicyErrors.RemoteCertificateNameMismatch | 
+                                                         System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors;
+                }
+
+                // Reemplaza esta línea:
+                // using var connection = factory.CreateConnection();
+                // Por esta línea:
+                using var connection = factory.CreateConnection();
+                log.Add("✅ Conexión TCP/IP exitosa.");
+
+                using var channel = connection.CreateModel();
+                log.Add("✅ Canal creado.");
+
+                // Intentamos crear una cola de prueba
+                string queueName = "cola_prueba_diagnostico";
+                channel.QueueDeclare(queue: queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
+                log.Add($"✅ Cola '{queueName}' declarada/verificada en el servidor.");
+
+                // Enviamos un mensaje
+                // Enviamos un mensaje
+                var body = System.Text.Encoding.UTF8.GetBytes("Hola desde el Diagnóstico");
+                
+                // CORRECCIÓN AQUÍ TAMBIÉN:
+                channel.BasicPublish(exchange: "", 
+                                    routingKey: queueName, 
+                                    mandatory: false, // <--- AGREGAR ESTO
+                                    basicProperties: null, 
+                                    body: body);
+
+                return Ok(new { Status = "ÉXITO", Pasos = log });
+            }
+            catch (Exception ex)
+            {
+                // AQUÍ SALDRÁ EL ERROR REAL
+                return BadRequest(new 
+                { 
+                    Status = "FALLÓ", 
+                    ErrorType = ex.GetType().Name,
+                    Mensaje = ex.Message, 
+                    StackTrace = ex.StackTrace,
+                    Pasos = log
+                });
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ActivoCreateRequest req)
-{
-    var entity = new Activo
-    {
-        Nombre = req.Nombre,
-        PeriodosDepreciacionTotal = req.PeriodosDepreciacionTotal,
-        ValorCompra = req.ValorCompra,
-        IdTipoActivo = req.IdTipoActivo,
-        ActivoFlag = true,
-        FechaCreacion = DateTime.Now // ✅ AQUI
-        // o DateTime.UtcNow
-    };
+        {
+            var entity = new Activo
+            {
+                Nombre = req.Nombre,
+                PeriodosDepreciacionTotal = req.PeriodosDepreciacionTotal,
+                ValorCompra = req.ValorCompra,
+                IdTipoActivo = req.IdTipoActivo,
+                ActivoFlag = true,
+                FechaCreacion = DateTime.Now // ✅ Corregido a Hora Local
+            };
 
-    var id = await _repo.CreateAsync(entity);
-    return CreatedAtAction(nameof(GetById), new { id }, new { id });
-}
+            // 1. Guardar en Base de Datos Local
+            var id = await _repo.CreateAsync(entity);
+
+            // 2. INTEGRACIÓN RABBITMQ: Escenario 3 (Alta de Nuevo Equipo)
+            try 
+            {
+                var payload = new 
+                {
+                    codigo_activo = $"ACT-{id}", // Generamos un código legible
+                    nombre = req.Nombre,
+                    fecha_compra = entity.FechaCreacion.ToString("yyyy-MM-dd"),
+                    estado = "ACTIVO",
+                    origen = "MODULO_ACTIVOS"
+                };
+
+                // Enviamos mensaje a la cola que escucha Mantenimiento
+                _messageProducer.SendMessage(payload, "activos.nuevo.registrado");
+            }
+            catch (Exception ex)
+            {
+                // Loguear el error pero NO detener la creación del activo (Fail-safe)
+                Console.WriteLine($"Error enviando a RabbitMQ: {ex.Message}");
+            }
+
+            return CreatedAtAction(nameof(GetById), new { id }, new { id });
+        }
+
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] ActivoUpdateRequest req)
         {
@@ -141,4 +239,7 @@ namespace DistributedApp.Assets.Api.Controllers
             return NoContent();
         }
     }
+
+    
+
 }
