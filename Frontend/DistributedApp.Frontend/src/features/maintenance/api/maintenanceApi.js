@@ -1,7 +1,7 @@
 import { apiMaintenance } from '../../../core/api/axios.js'; 
 
 // ============================================================
-// 1. ACTIVIDADES (Ajustado a iD_ACTIVIDAD)
+// 1. ACTIVIDADES (Catálogo de Servicios)
 // ============================================================
 export const getActivities = async () => {
   const response = await apiMaintenance.get('/Activity');
@@ -10,8 +10,6 @@ export const getActivities = async () => {
 
 export const createActivity = async (data) => {
   const payload = {
-    // Si tu GET devuelve iD_ACTIVIDAD, es probable que el POST espere lo mismo
-    // o simplemente las props del DTO. Usamos la convención del JSON que mostraste.
     codigo: data.codigo,
     nombre: data.nombre,
     estado: true
@@ -21,7 +19,7 @@ export const createActivity = async (data) => {
 
 export const updateActivity = async (id, data) => {
   const payload = {
-    iD_ACTIVIDAD: id, // <--- OJO A ESTO
+    iD_ACTIVIDAD: parseInt(id), // Aseguramos entero
     codigo: data.codigo,
     nombre: data.nombre,
     estado: data.estado
@@ -34,7 +32,7 @@ export const deleteActivity = async (id) => {
 };
 
 // ============================================================
-// 2. ACTIVOS (Ajustado a iD_ACTIVO)
+// 2. ACTIVOS (Catálogo de Equipos)
 // ============================================================
 export const getAssets = async () => {
   const response = await apiMaintenance.get('/Asset');
@@ -45,7 +43,7 @@ export const createAsset = async (data) => {
   const payload = {
     codigo: data.codigo,
     nombre: data.nombre,
-    fechA_COMPRA: data.fecha_compra,
+    fechA_COMPRA: data.fecha_compra, // Asegúrate que el backend espere este nombre exacto
     estado: true
   };
   return await apiMaintenance.post('/Asset', payload);
@@ -53,7 +51,7 @@ export const createAsset = async (data) => {
 
 export const updateAsset = async (id, data) => {
   const payload = {
-    iD_ACTIVO: id, // <--- OJO A ESTO
+    iD_ACTIVO: parseInt(id),
     codigo: data.codigo,
     nombre: data.nombre,
     fechA_COMPRA: data.fecha_compra,
@@ -68,19 +66,29 @@ export const deleteAsset = async (id) => {
 
 
 // ============================================================
-// 3. MANTENIMIENTO (CRUD COMPLETO)
+// 3. MANTENIMIENTO (Transaccional)
 // ============================================================
 
+// LISTAR (Historial)
+export const getMaintenanceHistory = async () => {
+  const response = await apiMaintenance.get('/Maintenance');
+  return response.data;
+};
 
+// OBTENER POR ID (Para editar)
+export const getMaintenanceById = async (id) => {
+  const response = await apiMaintenance.get(`/Maintenance/${id}`);
+  return response.data;
+};
 
-// CREAR
+// CREAR ORDEN
 export const createMaintenanceOrder = async (header, details) => {
   const payload = {
-    // Para crear, mandamos IDs en 0
     iD_CABECERA: 0,
     numero: header.numero,
     fecha: new Date(header.fecha).toISOString(), 
     responsable: header.responsable,
+    estadO_MQ: "PENDIENTE",
     detalles: details.map(d => ({
       iD_DETALLE: 0,
       iD_CABECERA: 0,
@@ -94,17 +102,17 @@ export const createMaintenanceOrder = async (header, details) => {
   return await apiMaintenance.post('/Maintenance', payload);
 };
 
-// MODIFICAR (Requisito Crítico)
+// MODIFICAR ORDEN (Con Fix del Error 400)
 export const updateMaintenanceOrder = async (id, header, details) => {
   const payload = {
-    iD_CABECERA: id, // ID de la orden que editamos
+    iD_CABECERA: parseInt(id), // <--- CRÍTICO: Debe coincidir con la URL
     numero: header.numero,
     fecha: new Date(header.fecha).toISOString(),
     responsable: header.responsable,
+    estadO_MQ: "PENDIENTE", // O mantienes el que tenía
     detalles: details.map(d => ({
-      // Si tiene ID_DETALLE lo mantenemos, si es nuevo va en 0
-      iD_DETALLE: d.iD_DETALLE || 0,
-      iD_CABECERA: id,
+      iD_DETALLE: d.iD_DETALLE || 0, // Si es nuevo detalle, va en 0
+      iD_CABECERA: parseInt(id),     // Vinculamos al ID padre
       iD_ACTIVO: parseInt(d.id_activo),
       iD_ACTIVIDAD: parseInt(d.id_actividad),
       valor: parseFloat(d.valor),
@@ -115,28 +123,15 @@ export const updateMaintenanceOrder = async (id, header, details) => {
   return await apiMaintenance.put(`/Maintenance/${id}`, payload);
 };
 
-// ELIMINAR
+// ELIMINAR ORDEN
 export const deleteMaintenanceOrder = async (id) => {
   return await apiMaintenance.delete(`/Maintenance/${id}`);
 };
 
-// REPORTE
+// REPORTE DE COSTOS
 export const getMaintenanceReport = async (start, end) => {
   const response = await apiMaintenance.get('/Maintenance/report', { 
     params: { start, end } 
   });
-  return response.data;
-};
-
-// LISTAR (Historial)
-export const getMaintenanceHistory = async () => {
-  const response = await apiMaintenance.get('/Maintenance');
-  return response.data;
-};
-
-// --- AGREGAR ESTA FUNCIÓN ---
-// OBTENER POR ID (Trae la orden completa con detalles)
-export const getMaintenanceById = async (id) => {
-  const response = await apiMaintenance.get(`/Maintenance/${id}`);
   return response.data;
 };

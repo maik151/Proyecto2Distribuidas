@@ -1,6 +1,8 @@
-using DistributedApp.Accounting.Application.Interfaces;
+﻿using DistributedApp.Accounting.Application.Interfaces;
 using DistributedApp.Accounting.Infrastructure.Data;
 using DistributedApp.Accounting.Infrastructure.Repositories;
+using DistributedApp.Accounting.Infrastructure.Services;
+using DistributedApp.Accounting.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,11 +17,17 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Inyecci�n de Dependencias
+// Inyección de Dependencias
 builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped<ITipoCuentaRepository, TipoCuentaRepository>();
 builder.Services.AddScoped<ICuentaRepository, CuentaRepository>();
 builder.Services.AddScoped<IComprobanteRepository, ComprobanteRepository>();
+
+// 🆕 RabbitMQ Service
+builder.Services.AddScoped<RabbitMQService>();
+
+// 🆕 Background Worker para RabbitMQ
+builder.Services.AddHostedService<RabbitMQWorker>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

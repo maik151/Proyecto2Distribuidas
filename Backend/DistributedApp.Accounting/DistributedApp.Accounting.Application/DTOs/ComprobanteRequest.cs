@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DistributedApp.Accounting.Domain.Entities;
+﻿using DistributedApp.Accounting.Domain.Entities;
 
 namespace DistributedApp.Accounting.Application.DTOs
 {
