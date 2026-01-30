@@ -1,9 +1,11 @@
 using DistributedApp.Maintenance.Application.Interface;
+using DistributedApp.Maintenance.Application.Interfaces;
 using DistributedApp.Maintenance.Application.Services;
 using DistributedApp.Maintenance.Infrastructure.Data;
+using DistributedApp.Maintenance.Infrastructure.Messaging;
 using DistributedApp.Maintenance.Infrastructure.Repositories;
-using System.Data;
 using Microsoft.Data.SqlClient;
+using System.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +34,6 @@ builder.Services.AddScoped<IDbConnection>(sp =>
     new SqlConnection(builder.Configuration.GetConnectionString("BeaconDesk-AzureDatabase")));
 
 // Factory (Si lo usas en otros repos antiguos)
-builder.Services.AddScoped<SqlConnectionFactory>();
 
 // =========================================================
 // 3. INYECCIÓN DE DEPENDENCIAS (REPOSITORIOS)
@@ -49,6 +50,9 @@ builder.Services.AddScoped<IRabbitMQProducer, RabbitMQProducer>(); // <--- El Pr
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IMaintenanceService, MaintenanceService>(); // <--- El Servicio Principal
+builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
+builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+builder.Services.AddHostedService<AssetConsumerService>();
 
 var app = builder.Build();
 

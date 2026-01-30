@@ -1,7 +1,7 @@
 ﻿using Dapper;
 using DistributedApp.Maintenance.Application.Interface;
+using DistributedApp.Maintenance.Application.Interfaces; // Asegúrate del namespace correcto
 using DistributedApp.Maintenance.Domain.Entities;
-using DistributedApp.Maintenance.Infrastructure.Data;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -9,10 +9,10 @@ namespace DistributedApp.Maintenance.Infrastructure.Repositories
 {
     public class AssetRepository : IAssetRepository
     {
-        private readonly SqlConnectionFactory _sqlConnectionFactory;
+        // Usamos la Interfaz, no la clase concreta
+        private readonly ISqlConnectionFactory _sqlConnectionFactory;
 
-        // Inyección del Factory corregida
-        public AssetRepository(SqlConnectionFactory sqlConnectionFactory)
+        public AssetRepository(ISqlConnectionFactory sqlConnectionFactory)
         {
             _sqlConnectionFactory = sqlConnectionFactory;
         }
@@ -34,10 +34,12 @@ namespace DistributedApp.Maintenance.Infrastructure.Repositories
         public async Task<int> InsertAsync(Asset entity)
         {
             using var connection = _sqlConnectionFactory.CreateConnection();
+            // Tu query estaba perfecta
             var sql = @"
                 INSERT INTO MANT_ACTIVO (CODIGO, NOMBRE, FECHA_COMPRA, ESTADO) 
                 VALUES (@CODIGO, @NOMBRE, @FECHA_COMPRA, 1);
                 SELECT CAST(SCOPE_IDENTITY() as int);";
+
             return await connection.ExecuteScalarAsync<int>(sql, entity);
         }
 
@@ -49,7 +51,6 @@ namespace DistributedApp.Maintenance.Infrastructure.Repositories
             return rows > 0;
         }
 
-        // Aunque tu interfaz base tiene Delete, recuerda que es borrado lógico
         public async Task<bool> DeleteAsync(int id)
         {
             using var connection = _sqlConnectionFactory.CreateConnection();
