@@ -1,6 +1,7 @@
 using DistributedApp.Assets.Application.Interfaces;
 using DistributedApp.Assets.Infraestructure.Data;
 using DistributedApp.Assets.Infraestructure.Repositories;
+using DistributedApp.Assets.Infraestructure.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// REGISTRO DE RABBITMQ
+builder.Services.AddScoped<IMessageProducer, RabbitMQProducer>();
 // ✅ DB
 builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
 

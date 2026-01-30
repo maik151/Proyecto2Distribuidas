@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { apiAssets } from "../../../core/api/axios";
 import {
-  ArrowLeft, Calculator, Calendar, Save, RefreshCw, AlertTriangle, CheckCircle2,
-  Table as TableIcon, History, Printer, Eye, X, Trash2
+  Calculator, RefreshCw, AlertTriangle, CheckCircle2,
+  Table as TableIcon, History, Printer, Save, Eye, X, Trash2
 } from "lucide-react";
 import { ActivosNavBar } from "./ActivosNavBar";
 
@@ -12,156 +11,153 @@ const money = (n) => Number(n ?? 0).toLocaleString("es-EC", { style: "currency",
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString("es-EC", { year: "numeric", month: "2-digit", day: "2-digit" }) : "-";
 
 // =========================================================
-// MODAL DE DETALLE (CON DISEÑO DE IMPRESIÓN FORMAL)
+// 1. TICKET DE IMPRESIÓN (INVISIBLE EN PANTALLA)
 // =========================================================
-const DetalleModal = ({ open, onClose, data, loading }) => {
-  if (!open) return null;
-
-  const handlePrint = () => {
-    window.print();
-  };
+const DepreciacionTicket = ({ data }) => {
+  if (!data) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 no-print-bg">
-      <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col max-h-[90vh]">
+    <div id="printable-area" className="hidden">
+        {/* ENCABEZADO */}
+        <div className="mb-8 border-b border-black pb-4">
+            <div className="flex justify-between items-start">
+                <div>
+                    <h1 className="text-2xl font-bold uppercase text-black">Comprobante de Diario</h1>
+                    <p className="text-gray-600 text-sm">Depreciación de Activos Fijos</p>
+                </div>
+                <div className="text-right">
+                    <div className="border border-black px-3 py-1 mb-1 inline-block">
+                        <span className="block text-[10px] font-bold uppercase">Referencia</span>
+                        <span className="text-lg font-mono font-bold">#{data.idDepreciacion}</span>
+                    </div>
+                    <p className="text-sm">Fecha: <b>{fmtDate(data.fecha)}</b></p>
+                </div>
+            </div>
+            
+            <div className="mt-4 p-3 border border-gray-300 bg-gray-50 text-sm">
+                <p><span className="font-bold inline-block w-24">Concepto:</span> {data.observaciones}</p>
+                <p><span className="font-bold inline-block w-24">Responsable:</span> {data.responsable}</p>
+            </div>
+        </div>
+
+        {/* TABLA */}
+        <table className="w-full text-left text-sm border-collapse mb-8">
+            <thead>
+                <tr className="border-b-2 border-black">
+                    <th className="py-2 text-left w-1/2">Activo / Cuenta</th>
+                    <th className="py-2 text-center">Periodo</th>
+                    <th className="py-2 text-right">Valor Cuota</th>
+                </tr>
+            </thead>
+            <tbody>
+                {data.detalles?.map((d, idx) => (
+                    <tr key={d.idDetalle} className={idx % 2 === 0 ? "bg-gray-50" : ""}>
+                        <td className="py-2 pr-2">{d.nombreActivo || `Activo ID: ${d.idActivo}`}</td>
+                        <td className="py-2 text-center">{d.periodo}</td>
+                        <td className="py-2 text-right font-mono">{money(d.valorDepreciacion)}</td>
+                    </tr>
+                ))}
+            </tbody>
+            <tfoot>
+                <tr className="border-t-2 border-black font-bold text-lg">
+                    <td className="py-3">TOTAL GENERAL</td>
+                    <td></td>
+                    <td className="py-3 text-right">{money(data.detalles?.reduce((acc, curr) => acc + curr.valorDepreciacion, 0))}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        {/* FIRMAS */}
+        <div className="mt-20 pt-10 flex justify-between px-10">
+            <div className="text-center w-1/3">
+                <div className="border-t border-black pt-2">
+                    <p className="font-bold text-sm uppercase">Elaborado por</p>
+                    <p className="text-xs text-gray-500">{data.responsable}</p>
+                </div>
+            </div>
+            <div className="text-center w-1/3">
+                <div className="border-t border-black pt-2">
+                    <p className="font-bold text-sm uppercase">Aprobado por</p>
+                    <p className="text-xs text-gray-500">Contabilidad</p>
+                </div>
+            </div>
+        </div>
         
-        {/* --- CABECERA DEL MODAL (SOLO VISIBLE EN PANTALLA) --- */}
-        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 no-print">
+        <div className="mt-8 text-center text-[10px] text-gray-400">
+            Impreso el {new Date().toLocaleString()}
+        </div>
+    </div>
+  );
+};
+
+// =========================================================
+// 2. MODAL VISUAL (SOLO PANTALLA)
+// =========================================================
+const DetalleModal = ({ open, onClose, data, loading, onPrint }) => {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 no-print">
+      <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h3 className="text-xl font-bold text-slate-900">Detalle de Depreciación</h3>
-            {!loading && data && (
-                <p className="text-sm text-slate-500 mt-0.5">
-                    Proceso #{data.idDepreciacion} • {fmtDate(data.fecha)}
-                </p>
-            )}
+            {!loading && data && <p className="text-sm text-slate-500 mt-0.5">Proceso #{data.idDepreciacion} • {fmtDate(data.fecha)}</p>}
           </div>
           <div className="flex gap-2">
-             {/* Botón IMPRIMIR DETALLE */}
              {!loading && data && (
-                <button 
-                    onClick={handlePrint} 
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200"
-                    title="Imprimir Comprobante"
-                >
-                    <Printer size={18} /> <span className="hidden sm:inline">Imprimir</span>
+                <button onClick={onPrint} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+                    <Printer size={18} /> Imprimir
                 </button>
              )}
-             <button onClick={onClose} className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-500 transition">
-                <X size={20} />
-             </button>
+             <button onClick={onClose} className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-500 transition"><X size={20} /></button>
           </div>
         </div>
 
-        {/* --- AREA DE CONTENIDO (ESTO ES LO QUE SE IMPRIME) --- */}
-        <div className="p-0 overflow-auto flex-1 bg-white" id="modal-print-area">
+        <div className="p-0 overflow-auto flex-1 bg-white">
             {loading ? (
-                <div className="p-12 text-center text-slate-400 flex flex-col items-center">
-                    <RefreshCw className="animate-spin mb-2" /> Cargando detalles...
-                </div>
+                <div className="p-12 text-center text-slate-400 flex flex-col items-center"><RefreshCw className="animate-spin mb-2" /> Cargando...</div>
             ) : data ? (
                 <div className="p-6 sm:p-10">
-                    
-                    {/* ENCABEZADO FORMAL (SOLO VISIBLE AL IMPRIMIR) */}
-                    <div className="hidden print-header mb-8 border-b pb-6">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Comprobante de Depreciación</h1>
-                                <p className="text-slate-500 text-sm mt-1">Sistema de Gestión de Activos Fijos</p>
-                            </div>
-                            <div className="text-right">
-                                <div className="inline-block bg-slate-100 px-3 py-1 rounded text-sm font-mono font-bold text-slate-700 mb-1">
-                                    REF: #{data.idDepreciacion}
-                                </div>
-                                <p className="text-sm text-slate-600">Fecha: <span className="font-bold">{fmtDate(data.fecha)}</span></p>
-                            </div>
-                        </div>
-                        <div className="mt-4 grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-lg border border-slate-100">
-                            <div>
-                                <span className="block text-xs font-bold text-slate-400 uppercase">Observaciones</span>
-                                <span className="text-slate-800">{data.observaciones}</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-bold text-slate-400 uppercase">Responsable</span>
-                                <span className="text-slate-800">{data.responsable}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* TABLA DE DATOS */}
                     <table className="w-full text-left text-sm border-collapse">
-                        <thead className="bg-slate-50 text-slate-500 font-bold sticky top-0 shadow-sm print-no-shadow">
-                            <tr className="border-b border-slate-200">
+                        <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0">
+                            <tr className="border-b-2 border-slate-300">
                                 <th className="px-4 py-3 text-left w-1/2">Activo</th>
                                 <th className="px-4 py-3 text-center">Periodo</th>
-                                <th className="px-4 py-3 text-right">Valor Cuota</th>
+                                <th className="px-4 py-3 text-right">Valor</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-200">
                             {data.detalles?.map((d) => (
                                 <tr key={d.idDetalle}>
-                                    <td className="px-4 py-3 font-medium text-slate-900">
-                                        {d.nombreActivo || `Activo ID: ${d.idActivo}`}
-                                    </td>
-                                    <td className="px-4 py-3 text-center text-slate-500">
-                                        {d.periodo}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono text-slate-700">
-                                        {money(d.valorDepreciacion)}
-                                    </td>
+                                    <td className="px-4 py-3 font-medium text-slate-900">{d.nombreActivo || `Activo ID: ${d.idActivo}`}</td>
+                                    <td className="px-4 py-3 text-center text-slate-600">{d.periodo}</td>
+                                    <td className="px-4 py-3 text-right font-mono text-slate-800">{money(d.valorDepreciacion)}</td>
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot className="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-200">
-                            <tr>
-                                <td className="px-4 py-4 uppercase text-xs tracking-wider">Total Depreciado</td>
-                                <td className="px-4 py-4"></td>
-                                <td className="px-4 py-4 text-right text-lg">
-                                    {money(data.detalles?.reduce((acc, curr) => acc + curr.valorDepreciacion, 0))}
-                                </td>
-                            </tr>
+                        <tfoot className="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-900">
+                            <tr><td className="px-4 py-4 uppercase">Total</td><td className="px-4 py-4"></td><td className="px-4 py-4 text-right text-lg">{money(data.detalles?.reduce((acc, curr) => acc + curr.valorDepreciacion, 0))}</td></tr>
                         </tfoot>
                     </table>
-                    
-                    {/* PIE DE PÁGINA CON FIRMAS (SOLO VISIBLE AL IMPRIMIR) */}
-                    <div className="hidden print-footer mt-16 pt-8 border-t border-slate-200">
-                        <div className="flex justify-between px-10">
-                            <div className="text-center">
-                                <div className="border-t border-slate-400 w-48 h-1 mb-2"></div>
-                                <p className="text-xs font-bold uppercase text-slate-500">Elaborado por</p>
-                                <p className="text-sm">{data.responsable}</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="border-t border-slate-400 w-48 h-1 mb-2"></div>
-                                <p className="text-xs font-bold uppercase text-slate-500">Aprobado por</p>
-                                <p className="text-sm">Contabilidad</p>
-                            </div>
-                        </div>
-                        <div className="mt-8 text-center text-[10px] text-slate-400">
-                            Documento generado automáticamente por el sistema el {new Date().toLocaleString()}
-                        </div>
-                    </div>
-
                 </div>
-            ) : (
-                <div className="p-8 text-center text-rose-500">No se pudo cargar la información.</div>
-            )}
+            ) : <div className="p-8 text-center text-rose-500">Error cargando información.</div>}
         </div>
-
-        {/* --- PIE DEL MODAL (BOTONES DE CERRAR) --- */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end no-print">
-            <button onClick={onClose} className="px-6 py-2 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition">
-                Cerrar Vista
-            </button>
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+            <button onClick={onClose} className="px-6 py-2 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition">Cerrar</button>
         </div>
       </div>
     </div>
   );
 };
 
+// =========================================================
+// 3. PÁGINA PRINCIPAL
+// =========================================================
 export default function DepreciacionPage() {
   const [activeTab, setActiveTab] = useState("new"); 
   
-  // Estados Nueva
+  // Estados
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
   const [observaciones, setObservaciones] = useState("Depreciación mensual automática");
   const [detalles, setDetalles] = useState([]);
@@ -170,11 +166,12 @@ export default function DepreciacionPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
 
-  // Estados Historial
   const [historyList, setHistoryList] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  
+  // Datos para el Modal y para imprimir
   const [viewId, setViewId] = useState(null);
-  const [viewData, setViewData] = useState(null);
+  const [viewData, setViewData] = useState(null); // <--- ESTA DATA SE PASARÁ AL TICKET
   const [loadingView, setLoadingView] = useState(false);
 
   // --- LÓGICA ---
@@ -198,7 +195,7 @@ export default function DepreciacionPage() {
     try {
       const payload = { fecha, observaciones, responsable: "Admin", detalles: detalles.map(d => ({ idActivo: d.idActivo, periodo: d.periodo, valorDepreciacion: d.valor })) };
       await apiAssets.post("/Depreciaciones", payload);
-      setMsg({ type: "success", text: "¡Depreciación guardada correctamente!" });
+      setMsg({ type: "success", text: "¡Guardado correctamente!" });
       setDetalles([]); setProcesado(false);
       if(activeTab === "history") fetchHistory();
     } catch (e) { setMsg({ type: "error", text: "Error al guardar." }); }
@@ -223,10 +220,8 @@ export default function DepreciacionPage() {
 
   const onAnulate = async (row) => {
       if(!confirm(`¿Anular depreciación #${row.idDepreciacion}?`)) return;
-      try {
-          await apiAssets.delete(`/Depreciaciones/${row.idDepreciacion}`);
-          fetchHistory(); 
-      } catch(e) { alert("No se pudo anular."); }
+      try { await apiAssets.delete(`/Depreciaciones/${row.idDepreciacion}`); fetchHistory(); } 
+      catch(e) { alert("No se pudo anular."); }
   };
 
   useEffect(() => { if (activeTab === "history") fetchHistory(); }, [activeTab]);
@@ -246,7 +241,7 @@ export default function DepreciacionPage() {
             </div>
         </div>
 
-        {/* === TAB 1: NUEVA === */}
+        {/* TAB NUEVA */}
         {activeTab === "new" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 no-print">
                 <div className="lg:col-span-1 bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 h-fit">
@@ -274,12 +269,12 @@ export default function DepreciacionPage() {
             </div>
         )}
 
-        {/* === TAB 2: HISTORIAL === */}
+        {/* TAB HISTORIAL */}
         {activeTab === "history" && (
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden print-card">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <div><h3 className="font-bold text-lg flex items-center gap-2"><History className="text-slate-400"/> Historial</h3><p className="text-sm text-slate-500 no-print">Registro de procesos.</p></div>
-                    <div className="flex gap-2 no-print"><button onClick={printHistory} className="p-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-600 shadow-sm" title="Imprimir Listado"><Printer size={18}/></button><button onClick={fetchHistory} className="p-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-600 shadow-sm"><RefreshCw size={18}/></button></div>
+                    <div className="flex gap-2 no-print"><button onClick={printHistory} className="p-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-600 shadow-sm" title="Imprimir Lista"><Printer size={18}/></button><button onClick={fetchHistory} className="p-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-600 shadow-sm"><RefreshCw size={18}/></button></div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
@@ -291,7 +286,7 @@ export default function DepreciacionPage() {
                                         <td className="px-6 py-4 font-mono text-slate-500">#{h.idDepreciacion}</td>
                                         <td className="px-6 py-4 font-bold text-slate-900">{fmtDate(h.fecha)}</td>
                                         <td className="px-6 py-4 text-slate-600">{h.observaciones}</td>
-                                        <td className="px-6 py-4">{h.estado === 1 ? <span className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold">Procesado</span> : <span className="text-rose-600 bg-rose-50 px-2 py-1 rounded-md text-xs font-bold">Anulado</span>}</td>
+                                        <td className="px-6 py-4">{h.estado === 1 ? <span className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold border border-emerald-100">Procesado</span> : <span className="text-rose-600 bg-rose-50 px-2 py-1 rounded-md text-xs font-bold border border-rose-100">Anulado</span>}</td>
                                         <td className="px-6 py-4 text-center no-print flex justify-center gap-2">
                                             <button onClick={() => openDetail(h.idDepreciacion)} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition" title="Ver Detalles"><Eye size={18}/></button>
                                             {h.estado === 1 && <button onClick={() => onAnulate(h)} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition" title="Anular"><Trash2 size={18}/></button>}
@@ -306,47 +301,50 @@ export default function DepreciacionPage() {
         )}
       </div>
       
-      <DetalleModal open={!!viewId} onClose={() => setViewId(null)} data={viewData} loading={loadingView} />
-      
-      {/* CSS Mágico para Imprimir */}
+      {/* COMPONENTES FUERA DEL FLUJO PRINCIPAL */}
+      <DetalleModal 
+        open={!!viewId} 
+        onClose={() => setViewId(null)} 
+        data={viewData} 
+        loading={loadingView} 
+        onPrint={() => window.print()} 
+      />
+
+      {/* TICKET DE IMPRESIÓN (SE CARGA CON LA DATA DEL MODAL) */}
+      <DepreciacionTicket data={viewData} />
+
       <style>{`
         @media print {
-          /* Ocultar TODO el cuerpo por defecto */
-          body { visibility: hidden; }
+          /* 1. Ocultar TODO por defecto */
+          body * { visibility: hidden; }
           
-          /* SI EL MODAL ESTÁ ABIERTO: Mostrar SOLO su contenido */
-          #modal-print-area, #modal-print-area * {
+          /* 2. Mostrar SOLO el Ticket si hay datos */
+          #printable-area, #printable-area * {
             visibility: visible;
           }
-          #modal-print-area {
+
+          /* 3. Posicionar el Ticket en toda la página */
+          #printable-area {
+            display: block !important; /* Forzar display */
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
             margin: 0;
             padding: 20px;
-            background: white !important;
-            z-index: 9999;
+            background: white;
           }
-          
-          /* Mostrar elementos específicos de impresión del modal */
-          .print-header, .print-footer { display: block !important; }
-          
-          /* Ocultar controles internos del modal */
-          .no-print, .no-print-bg { display: none !important; }
-          .print-no-shadow { box-shadow: none !important; }
 
-          /* CASO B: SI NO HAY MODAL (Imprimir Lista Historial) */
-          /* Solo si el modal NO está visible (esto es un truco CSS) */
-          body:not(:has(#modal-print-area:visible)) .print-card {
-             visibility: visible;
-             position: absolute;
-             left: 0; top: 0; width: 100%;
-          }
+          /* 4. Ocultar la interfaz del sistema */
+          .no-print { display: none !important; }
+
+          /* CASO B: Si NO hay ticket (estamos imprimiendo el listado historial) */
+          /* Si viewData es null, imprimimos .print-card */
+          ${!viewData ? `
+            .print-card, .print-card * { visibility: visible; }
+            .print-card { position: absolute; left: 0; top: 0; width: 100%; }
+          ` : ''}
         }
-        
-        /* Ocultar elementos de impresión en pantalla normal */
-        .print-header, .print-footer { display: none; }
       `}</style>
     </div>
   );
