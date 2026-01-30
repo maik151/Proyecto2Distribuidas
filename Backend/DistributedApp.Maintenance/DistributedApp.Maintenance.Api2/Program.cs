@@ -10,15 +10,15 @@ using System.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // =========================================================
-// 1. CONFIGURACIÓN CORS (ESTO ES LO QUE FALTABA)
+// 1. CONFIGURACIÓN CORS
 // =========================================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()  // Permite todas las URLs (localhost:5173, etc)
-              .AllowAnyMethod()  // Permite GET, POST, PUT, DELETE
-              .AllowAnyHeader(); // Permite enviar Tokens y JSON
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -27,13 +27,16 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // =========================================================
-// 2. CONEXIÓN BASE DE DATOS (Dapper)
+// 2. CONEXIÓN Y FACTORY (Base de datos)
 // =========================================================
-// Nota: Usé "BeaconDesk-AzureDatabase" porque vi que así lo tienes en tu código
-builder.Services.AddScoped<IDbConnection>(sp =>
-    new SqlConnection(builder.Configuration.GetConnectionString("BeaconDesk-AzureDatabase")));
 
-// Factory (Si lo usas en otros repos antiguos)
+// Registramos el Factory vinculado a su Interfaz
+builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
+
+// TRUCO: Registramos TAMBIÉN la clase concreta por si algún repositorio antiguo
+// (como ActivityRepository) la pide directamente y no por interfaz.
+// Esto soluciona tu error actual sin editar todos los archivos.
+builder.Services.AddSingleton<SqlConnectionFactory>();
 
 // =========================================================
 // 3. INYECCIÓN DE DEPENDENCIAS (REPOSITORIOS)
@@ -45,13 +48,13 @@ builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 // =========================================================
 // 4. RABBITMQ & SERVICIOS DE NEGOCIO
 // =========================================================
-builder.Services.AddScoped<IRabbitMQProducer, RabbitMQProducer>(); // <--- El Productor
+builder.Services.AddScoped<IRabbitMQProducer, RabbitMQProducer>(); // Productor
 
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IAssetService, AssetService>();
-builder.Services.AddScoped<IMaintenanceService, MaintenanceService>(); // <--- El Servicio Principal
-builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
-builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
+
+// Consumidor (Background Service)
 builder.Services.AddHostedService<AssetConsumerService>();
 
 var app = builder.Build();
@@ -66,13 +69,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// ¡IMPORTANTE! UseCors debe ir ANTES de UseAuthorization y MapControllers
 app.UseCors("AllowAll");
-
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

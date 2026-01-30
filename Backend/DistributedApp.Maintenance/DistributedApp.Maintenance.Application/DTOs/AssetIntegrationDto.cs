@@ -1,16 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text.Json.Serialization;
 
 namespace DistributedApp.Maintenance.Application.DTOs
 {
     public class AssetIntegrationDto
     {
-        public string codigo_activo { get; set; }
-        public string nombre { get; set; }
-        public DateTime fecha_compra { get; set; }
-        public string estado { get; set; }
+        // Usamos JsonPropertyName para mapear el JSON (snake_case) a C# (PascalCase)
+
+        [JsonPropertyName("codigo_activo")]
+        public string CodigoActivo { get; set; }
+
+        [JsonPropertyName("nombre")]
+        public string Nombre { get; set; }
+
+        [JsonPropertyName("fecha_compra")]
+        public string FechaCompra { get; set; } // Recibimos como string para evitar errores de formato fecha
+
+        [JsonPropertyName("estado")]
+        public string Estado { get; set; } // Ej: "ACTIVO"
     }
 }
