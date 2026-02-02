@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiAssets } from "../../../core/api/axios";
-import { Boxes, Search, Filter, RefreshCw, Plus, Save, Pencil, Tag } from "lucide-react";
-import { ActivosNavBar } from "./ActivosNavBar"; // Importación de la Navbar
+// 1. Importamos Trash2 para el icono de borrar
+import { Boxes, Search, Filter, RefreshCw, Plus, Save, Pencil, Tag, Trash2 } from "lucide-react"; 
+import { ActivosNavBar } from "./ActivosNavBar";
 
 // --- MODAL (TipoActivoForm) ---
+// (Este componente queda igual, no necesita cambios)
 const TipoActivoForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
   const [form, setForm] = useState({ idTipoActivo: null, nombre: "" });
 
@@ -76,11 +78,25 @@ export default function TipoActivosPage() {
     } catch (e) { setError("No se pudo guardar."); } finally { setSaving(false); }
   };
 
+  // 2. Función para eliminar
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Estás seguro de eliminar este Tipo de Activo?")) return;
+
+    setError(""); 
+    try {
+      await apiAssets.delete(`/TipoActivos/${id}`);
+      fetchAll(); // Recargar la lista
+    } catch (e) { 
+      console.error(e);
+      // Es común que falle si hay activos usando este tipo (Integridad Referencial)
+      setError("No se pudo eliminar. Verifique que no esté en uso por algún activo."); 
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FC] p-4 sm:p-6 md:p-8 font-sans text-slate-900">
       <div className="mx-auto max-w-[1400px]">
         
-        {/* NAVEGACIÓN COMPARTIDA */}
         <ActivosNavBar />
 
         {/* HEADER & STATS */}
@@ -100,6 +116,13 @@ export default function TipoActivosPage() {
           </div>
         </div>
 
+        {/* MENSAJE DE ERROR (Si existe) */}
+        {error && (
+            <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-sm font-semibold text-center">
+                {error}
+            </div>
+        )}
+
         {/* FILTROS Y BOTÓN NUEVO */}
         <div className="bg-white rounded-[2rem] p-4 shadow-sm border border-slate-100 flex flex-col lg:flex-row items-center gap-4 mb-6">
           <div className="relative group flex-1 w-full">
@@ -108,7 +131,6 @@ export default function TipoActivosPage() {
           </div>
           <button onClick={fetchAll} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition"><RefreshCw size={18} /></button>
           
-          {/* BOTÓN NUEVO */}
           <button onClick={() => { setEditing(null); setOpenForm(true); }} className="py-2 px-6 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition flex items-center gap-2">
             <Plus size={18} /> Nuevo Tipo
           </button>
@@ -131,8 +153,23 @@ export default function TipoActivosPage() {
                   <tr key={row.idTipoActivo} className="hover:bg-slate-50 transition">
                     <td className="px-6 py-4 font-mono text-slate-500">#{row.idTipoActivo}</td>
                     <td className="px-6 py-4 font-bold text-slate-900">{row.nombre}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button onClick={() => { setEditing(row); setOpenForm(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil size={16} /></button>
+                    
+                    {/* 3. Agregamos el botón de eliminar junto al de editar */}
+                    <td className="px-6 py-4 text-right flex justify-end gap-2">
+                      <button 
+                        onClick={() => { setEditing(row); setOpenForm(true); }} 
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Editar"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(row.idTipoActivo)} 
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}
