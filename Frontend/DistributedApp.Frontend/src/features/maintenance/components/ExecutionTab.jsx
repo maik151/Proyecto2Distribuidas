@@ -159,7 +159,6 @@ const ExecutionTab = () => {
       return alert("Complete los datos: Activo, Actividad y Costo mayor a 0.");
     }
 
-    // Buscamos nombres para mostrar en la tabla visualmente
     const assetObj = assets.find(a => (a.iD_ACTIVO || a.ID_ACTIVO) == newLine.id_activo);
     const actObj = activities.find(a => (a.iD_ACTIVIDAD || a.ID_ACTIVIDAD) == newLine.id_actividad);
 

@@ -157,7 +157,6 @@ const UserForm = ({ open, onClose, onSubmit, initialValues, loading }) => {
                 value={form.contrasena} 
                 onChange={handleChange} 
                 className="input-field pr-10" 
-                // Si es edición, no es required y minLength es flexible. Si es nuevo, required y min 6.
                 minLength={isEdit ? 0 : 6} 
                 required={!isEdit}
                 placeholder={isEdit ? "Dejar vacía para mantener actual" : "Mínimo 6 caracteres"}
@@ -279,13 +278,9 @@ const UsuariosPage = () => {
       };
 
       if (editing?.idUsuario) {
-        // EDICIÓN
         if (form.contrasena) {
-            // Si el usuario escribió algo, mandamos la nueva contraseña
             payload.contrasena = form.contrasena;
         } else {
-            // Si no, mandamos la contraseña antigua para que el backend no la borre
-            // (Asumiendo que 'editing.contrasena' tiene el valor actual o hash)
             payload.contrasena = editing.contrasena; 
         }
         await updateUser(editing.idUsuario, payload);

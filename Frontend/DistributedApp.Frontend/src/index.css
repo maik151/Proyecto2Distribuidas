@@ -2,12 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Opcional: Configuración base para que se sienta más nativo */
+
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  /* Fuente del sistema estilo Apple */
+  
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #F5F5F7; /* Gris muy suave (iOS background) */
+  background-color: #F5F5F7;
 }

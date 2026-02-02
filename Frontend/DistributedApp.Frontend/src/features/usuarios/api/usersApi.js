@@ -1,9 +1,8 @@
 import { apiAuth } from "../../../core/api/axios";
 
-// GET: Trae TODOS los usuarios
 export const getUsers = async () => {
   const resp = await apiAuth.get("/usuarios");
-  return resp.data; // Se asume que el backend devuelve un array directo o { data: [] }
+  return resp.data;
 };
 
 export const createUser = async (payload) => {
@@ -22,7 +21,6 @@ export const deleteUser = async (idUsuario) => {
 };
 
 export const toggleActive = async (idUsuario, activo) => {
-  // Ajustado para coincidir con tu posible endpoint
   const resp = await apiAuth.patch(`/usuarios/${idUsuario}/estado`, { Activo: activo });
   return resp.data;
 };

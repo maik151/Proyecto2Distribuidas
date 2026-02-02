@@ -52,7 +52,7 @@ namespace DistributedApp.Maintenance.Infrastructure.Messaging
                 // Asegúrate que los parámetros (durable, exclusive) coincidan con los del Producer
                 await channel.QueueDeclareAsync(queue: QUEUE_NAME, durable: true, exclusive: false, autoDelete: false, arguments: null);
 
-                _logger.LogInformation($"🎧 [AssetConsumer] Conectado a CloudAMQP. Escuchando: {QUEUE_NAME}...");
+                _logger.LogInformation($"[AssetConsumer] Conectado a CloudAMQP. Escuchando: {QUEUE_NAME}...");
 
                 // 4. Crear el Consumidor
                 var consumer = new AsyncEventingBasicConsumer(channel);
@@ -62,7 +62,7 @@ namespace DistributedApp.Maintenance.Infrastructure.Messaging
                     var body = ea.Body.ToArray();
                     var message = Encoding.UTF8.GetString(body);
 
-                    _logger.LogInformation($"📥 [AssetConsumer] Recibido JSON: {message}");
+                    _logger.LogInformation($"[AssetConsumer] Recibido JSON: {message}");
 
                     try
                     {

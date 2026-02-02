@@ -35,8 +35,6 @@ const AssetsTab = () => {
   const openModal = (item = null) => {
     if (item) {
       setIsEditing(true);
-      // Ojo: Dapper suele devolver las fechas en mayúscula FECHA_COMPRA a veces, 
-      // pero si tu JSON dice otra cosa, ajusta aquí. Asumiré fechA_COMPRA por Dapper default.
       const fechaRaw = item.fechA_COMPRA || item.fecha_Compra || item.FECHA_COMPRA;
       const dateStr = fechaRaw ? fechaRaw.split('T')[0] : '';
       

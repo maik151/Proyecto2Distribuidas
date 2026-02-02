@@ -13,8 +13,6 @@ const ActivitiesTab = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Simular un mini delay para que veas el skeleton (puedes quitarlo)
-      // await new Promise(r => setTimeout(r, 800)); 
       const data = await getActivities();
       setList(Array.isArray(data) ? data : []);
     } catch (error) {
