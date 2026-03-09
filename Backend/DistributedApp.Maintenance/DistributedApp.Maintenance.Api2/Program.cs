@@ -44,6 +44,8 @@ builder.Services.AddSingleton<SqlConnectionFactory>();
 builder.Services.AddScoped<IActivityRepository, ActivityRepository>();
 builder.Services.AddScoped<IAssetRepository, AssetRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
+builder.Services.AddScoped<IServiceNew, ServiceNewRepository>();
+
 
 // =========================================================
 // 4. RABBITMQ & SERVICIOS DE NEGOCIO
@@ -51,6 +53,8 @@ builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 builder.Services.AddScoped<IRabbitMQProducer, RabbitMQProducer>(); // Productor
 
 builder.Services.AddScoped<IActivityService, ActivityService>();
+builder.Services.AddScoped<NewService>();
+
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
 

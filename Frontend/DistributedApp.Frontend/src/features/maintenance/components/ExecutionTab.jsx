@@ -2,14 +2,14 @@ import { useEffect, useState, useMemo } from 'react';
 import { 
   getActivities, getAssets, 
   createMaintenanceOrder, getMaintenanceHistory, updateMaintenanceOrder, deleteMaintenanceOrder,
-  getMaintenanceById 
+  getMaintenanceById, ObtenerMontoTota_MJBS // <--- TU FUNCIÓN IMPORTADA
 } from '../api/maintenanceApi';
-import { Save, Plus, Trash, Search, ArrowLeft, Hash, Calendar, User, Eye, Loader2 } from 'lucide-react';
+import { Save, Plus, Trash, Search, ArrowLeft, Hash, Calendar, User, Eye, Loader2, DollarSign } from 'lucide-react';
 
 const ExecutionTab = () => {
   // --- ESTADOS ---
   const [view, setView] = useState('LIST');
-  const [isLoading, setIsLoading] = useState(false); // Estado de carga
+  const [isLoading, setIsLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [search, setSearch] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -19,6 +19,10 @@ const ExecutionTab = () => {
   const [activities, setActivities] = useState([]);
   const [assets, setAssets] = useState([]);
   
+  // --- ESTADO PARA EL TOTAL (REQUISITO EXAMEN) ---
+  // MOVIDO ADENTRO DEL COMPONENTE (CORRECCIÓN)
+  const [totalBase_MJBS, setTotalBase_MJBS] = useState(0);
+
   const [header, setHeader] = useState({ 
     numero: '', 
     responsable: '', 
@@ -33,16 +37,27 @@ const ExecutionTab = () => {
     loadInitialData();
   }, []);
 
+  // FUNCIÓN PARA CARGAR EL TOTAL (MOVIDA ADENTRO)
+  const cargarTotalBase_MJBS = async () => {
+    try {
+        const data = await ObtenerMontoTota_MJBS();
+        // Ajusta la propiedad según como lo mande tu backend (TotalGlobalMJ o montoTotal)
+        setTotalBase_MJBS(data.TotalGlobalMJ || data.totalGlobalMJ || data.montoTotal || 0);
+    } catch {
+      console.error("Error cargando el monto total base");  
+    }
+  };
+
   const loadInitialData = async () => {
     setIsLoading(true);
-    await Promise.all([loadOrders(), loadCatalogs()]);
+    // Agregamos cargarTotalBase_MJBS a la carga inicial
+    await Promise.all([loadOrders(), loadCatalogs(), cargarTotalBase_MJBS()]);
     setIsLoading(false);
   };
 
   const loadOrders = async () => {
     try {
       const data = await getMaintenanceHistory();
-      // Aseguramos que sea un array pase lo que pase
       setOrders(Array.isArray(data) ? data : []);
     } catch (e) { 
       console.error("Error cargando historial", e); 
@@ -60,7 +75,6 @@ const ExecutionTab = () => {
   // --- FILTROS ---
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
-      // Helper para buscar propiedades sin importar mayúsculas/minúsculas
       const responsable = o.responsable || o.RESPONSABLE || "";
       const numero = o.numero || o.NUMERO || "";
       return responsable.toLowerCase().includes(search.toLowerCase()) ||
@@ -76,6 +90,7 @@ const ExecutionTab = () => {
     try {
       await deleteMaintenanceOrder(id);
       await loadOrders();
+      await cargarTotalBase_MJBS(); // Actualizar total al borrar
     } catch (e) { 
       alert("Error al eliminar la orden."); 
     } finally {
@@ -85,38 +100,34 @@ const ExecutionTab = () => {
 
   const handleEditOrder = async (orderSummary) => {
     setIsLoading(true);
-    // Buscamos el ID correcto (puede venir como ID_CABECERA o iD_CABECERA)
     const id = orderSummary.iD_CABECERA || orderSummary.ID_CABECERA;
     setCurrentId(id);
     setIsEditing(true);
     
     try {
-      // 1. Pedir datos frescos al backend (JOINs incluidos)
       const fullOrder = await getMaintenanceById(id);
       
-      // 2. Mapear Cabecera
       const fechaRaw = fullOrder.fecha || fullOrder.FECHA;
       const dateStr = fechaRaw ? fechaRaw.split('T')[0] : new Date().toISOString().split('T')[0];
 
+      // Cargamos el total aquí también por si acaso
+      cargarTotalBase_MJBS(); 
+      
       setHeader({
         numero: fullOrder.numero || fullOrder.NUMERO,
         responsable: fullOrder.responsable || fullOrder.RESPONSABLE,
         fecha: dateStr
       });
 
-      // 3. Mapear Detalles (Blindado contra nombres de propiedades raros)
       const rawDetails = fullOrder.detalles || fullOrder.Detalles || [];
       
       const mappedDetails = rawDetails.map(d => {
-        // IDs
         const idActivo = d.iD_ACTIVO || d.ID_ACTIVO || d.IdActivo;
         const idActividad = d.iD_ACTIVIDAD || d.ID_ACTIVIDAD || d.IdActividad;
         
-        // Nombres (Backend JOIN o búsqueda local)
         const nombreActivoBackend = d.nombreActivo || d.NombreActivo;
         const nombreActividadBackend = d.nombreActividad || d.NombreActividad;
 
-        // Fallback local si el backend no mandó nombres
         const assetLocal = assets.find(a => (a.iD_ACTIVO || a.ID_ACTIVO) == idActivo);
         const actLocal = activities.find(a => (a.iD_ACTIVIDAD || a.ID_ACTIVIDAD) == idActividad);
 
@@ -124,7 +135,6 @@ const ExecutionTab = () => {
           id_activo: idActivo,
           id_actividad: idActividad,
           valor: d.valor || d.VALOR || 0,
-          // Prioridad: Nombre del Backend > Nombre del Catálogo Local > "---"
           assetName: nombreActivoBackend || (assetLocal ? (assetLocal.nombre || assetLocal.NOMBRE) : "---"),
           actName: nombreActividadBackend || (actLocal ? (actLocal.nombre || actLocal.NOMBRE) : "---")
         };
@@ -144,8 +154,10 @@ const ExecutionTab = () => {
   const handleNewOrder = () => {
     setIsEditing(false);
     setCurrentId(0);
+    // Cargamos el total al crear nueva orden
+    cargarTotalBase_MJBS();
     setHeader({ 
-        numero: `ORD-${Math.floor(Math.random() * 90000) + 10000}`, // Generar número aleatorio
+        numero: `ORD-${Math.floor(Math.random() * 90000) + 10000}`, 
         responsable: '', 
         fecha: new Date().toISOString().split('T')[0] 
     });
@@ -170,7 +182,7 @@ const ExecutionTab = () => {
       actName: actObj ? (actObj.nombre || actObj.NOMBRE) : 'Desconocido'
     }]);
 
-    setNewLine({ id_activo: '', id_actividad: '', valor: '' }); // Limpiar inputs
+    setNewLine({ id_activo: '', id_actividad: '', valor: '' }); 
   };
 
   const removeDetail = (index) => setDetails(details.filter((_, i) => i !== index));
@@ -188,6 +200,10 @@ const ExecutionTab = () => {
         await createMaintenanceOrder(header, details);
         alert("¡Orden creada y enviada a Contabilidad!");
       }
+      
+      // --- PUNTO B DEL EXAMEN: ACTUALIZAR EL TOTAL AL INSERTAR ---
+      await cargarTotalBase_MJBS(); 
+      
       await loadOrders();
       setView('LIST');
     } catch (error) {
@@ -205,7 +221,6 @@ const ExecutionTab = () => {
   if (view === 'LIST') {
     return (
       <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-        {/* BARRA SUPERIOR */}
         <div className="flex flex-col sm:flex-row justify-between gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
           <div className="relative flex-1 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -221,7 +236,6 @@ const ExecutionTab = () => {
           </button>
         </div>
 
-        {/* TABLA */}
         <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden relative min-h-[300px]">
           {isLoading && (
             <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
@@ -245,7 +259,6 @@ const ExecutionTab = () => {
                     <tr><td colSpan="6" className="p-8 text-center text-slate-400">No se encontraron órdenes.</td></tr>
                 ) : (
                     filteredOrders.map(order => {
-                      // Extracción segura de propiedades
                       const id = order.iD_CABECERA || order.ID_CABECERA;
                       const num = order.numero || order.NUMERO;
                       const fecha = order.fecha || order.FECHA;
@@ -322,7 +335,22 @@ const ExecutionTab = () => {
         </div>
       </div>
 
-      {/* CABECERA */}
+      {/* --- MOSTRAR EL TOTAL DEL EXAMEN (PUNTO B) --- */}
+      <div className="mb-6 bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl text-white shadow-lg flex items-center justify-between">
+            <div>
+                <h2 className="text-sm font-bold opacity-90 uppercase tracking-wider">
+                    Total Histórico (Base de Datos) - MJ
+                </h2>
+                <p className="text-xs opacity-75">Suma de todos los detalles registrados</p>
+            </div>
+            <div className="flex items-center gap-2 text-3xl font-bold font-mono">
+                <DollarSign size={28} />
+                {totalBase_MJBS.toFixed(2)} 
+            </div>
+       </div>
+      {/* ------------------------------------------- */}
+
+      {/* CABECERA INPUTS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
          <div className="space-y-1.5">
            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Número</label>
@@ -357,7 +385,6 @@ const ExecutionTab = () => {
                 <select value={newLine.id_activo} onChange={e => setNewLine({...newLine, id_activo: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 outline-none bg-white">
                     <option value="">-- Seleccionar Activo --</option>
                     {assets.map((a, i) => (
-                        // Usamos a.iD_ACTIVO || a.ID_ACTIVO para ser compatibles
                         <option key={i} value={a.iD_ACTIVO || a.ID_ACTIVO}>{a.nombre || a.NOMBRE}</option>
                     ))}
                 </select>
@@ -411,7 +438,7 @@ const ExecutionTab = () => {
       {/* FOOTER */}
       <div className="flex justify-end items-center bg-purple-50 p-6 rounded-2xl border border-purple-100 gap-8">
          <div>
-            <p className="text-xs uppercase font-bold text-purple-400 text-right mb-1">Costo Total</p>
+            <p className="text-xs uppercase font-bold text-purple-400 text-right mb-1">Costo Total Orden</p>
             <p className="text-4xl font-bold text-purple-900">${total.toFixed(2)}</p>
          </div>
          <button onClick={saveOrder} disabled={isLoading} className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-95">

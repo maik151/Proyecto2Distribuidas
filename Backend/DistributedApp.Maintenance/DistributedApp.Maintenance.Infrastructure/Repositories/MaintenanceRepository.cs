@@ -223,5 +223,10 @@ namespace DistributedApp.Maintenance.Infrastructure.Repositories
 
             return await connection.QueryAsync<MaintenanceDetail>(sql, new { Start = start, End = end });
         }
+    
+        
+
+    
+    
     }
 }

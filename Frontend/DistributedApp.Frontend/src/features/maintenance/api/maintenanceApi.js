@@ -135,3 +135,10 @@ export const getMaintenanceReport = async (start, end) => {
   });
   return response.data;
 };
+
+
+export const ObtenerMontoTota_MJBS = async () =>{
+  const response = await apiMaintenance.get('/ServiceNew');
+
+  return response.data;
+}
